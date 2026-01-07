@@ -5,15 +5,15 @@ Construct Taylor series expansions for surrogate modelling. Compute UQ and sensi
 
 | Function              | Description                                                     | Symbol |
 |----------------------|-----------------------------------------------------------------|--------|
-| `tse`                | *n*-th-order Taylor Series                                      | $Y_{n}(\boldsymbol{x})$ |
-| `expectation`        | Expected Value                                                  | $E\left[Y_{n}(\boldsymbol{x})\right]$ |
-| `central_moment`     | Central Moment                                                  | $\mu_{k}\left[Y_{n}(\boldsymbol{x})\right]$ |
-| `sobol_indices`      | Partial Variances                                               | $V_{ij\ldots}\left[Y_{n}(\boldsymbol{x})\right]$ |
-| `sobol_indices`      | Sobol’ Indices                                                  | $S_{ij\ldots}\left[Y_{n}(\boldsymbol{x})\right]$ |
-| `total_sobol_indices`| Total Sobol’ Indices                                            | $S_{i}^{T}\left[Y_{n}(\boldsymbol{x})\right]$ |
-| `shapley_values`     | Shapley effects                                                 | $\phi_{i}\left[Y_{n}(\boldsymbol{x})\right]$ |
-| `remainder`          | Error of $\xi\!\left[Y_{n}(\boldsymbol{x})\right]$              | $\varepsilon\!\left[\xi\!\left[Y_{n}(\boldsymbol{x})\right]\right]$ |
-| —                    | Sensitivities, $\frac{\partial \xi[Y_n(\boldsymbol{x})]}{\partial \theta_i}$ | $S^{\xi}_{\theta_i}$ |
+| `tse`                | *n*-th-order Taylor Series                                      | $T_{n}(\boldsymbol{x})$ |
+| `expectation`        | Expected Value                                                  | $E\left[T_{n}(\boldsymbol{x})\right]$ |
+| `central_moment`     | Central Moment                                                  | $\mu_{k}\left[T_{n}(\boldsymbol{x})\right]$ |
+| `sobol_indices`      | Partial Variances                                               | $V_{ij\ldots}\left[T_{n}(\boldsymbol{x})\right]$ |
+| `sobol_indices`      | Sobol’ Indices                                                  | $S_{ij\ldots}\left[T_{n}(\boldsymbol{x})\right]$ |
+| `total_sobol_indices`| Total Sobol’ Indices                                            | $S_{i}^{T}\left[T_{n}(\boldsymbol{x})\right]$ |
+| `shapley_values`     | Shapley effects                                                 | $\phi_{i}\left[T_{n}(\boldsymbol{x})\right]$ |
+| `remainder`          | Error of $\xi\!\left[T_{n}(\boldsymbol{x})\right]$              | $\varepsilon\!\left[\xi\!\left[T_{n}(\boldsymbol{x})\right]\right]$ |
+| —                    | Sensitivities, $\frac{\partial \xi[T_n(\boldsymbol{x})]}{\partial \theta_i}$ | $S^{\xi}_{\theta_i}$ |
 
 
 # Prerequisites
@@ -30,7 +30,11 @@ conda env update -f environment.yml
 ```
 
 # Usage
-Run the examples in examples/
+Run the examples in examples/ with python. For example, :
+```bash
+cd TSEUQLib/examples/
+python ishigami.py
+```
 
 
 # Copyright
