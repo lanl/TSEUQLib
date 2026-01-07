@@ -24,9 +24,14 @@ Activate the otilib conda environment, for example:
 conda activate pyoti
 ```
 
-Add the TSEUQLib dependencies to the otilib conda environment with:
+Add the TSEUQLib dependencies in one of two ways (TESTING IN PROGRESS). 
+1) Update the pyoti environment with:
 ```bash
 conda env update -f environment.yml
+```
+Or, 2) Update the pyoti environment with:
+```bash
+conda install line_profiler sympy scipy pandas
 ```
 
 # Usage
