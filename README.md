@@ -2,7 +2,7 @@
 Construct Taylor series expansions for surrogate modelling. Compute UQ and sensitivity analysis metrics of the Taylor series expansion.
 
 # Prerequisites
-Install OTILib from [Link text](https://github.com/mauriaristi/otilib). This will create a new conda environment with OTILib installed.
+Install OTILib from https://github.com/mauriaristi/otilib. This will create a new conda environment with OTILib installed.
 
 Activate the otilib conda environment, for example:
 ```bash
