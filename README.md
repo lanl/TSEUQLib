@@ -1,6 +1,22 @@
 # TSEUQLib: Taylor Series Expansion Uncertainty Quantification Library
 Construct Taylor series expansions for surrogate modelling. Compute UQ and sensitivity analysis metrics of the Taylor series expansion.
 
+# Overview
+## TSEUQLib Features
+
+| Function              | Description                                                     | Symbol |
+|----------------------|-----------------------------------------------------------------|--------|
+| `tse`                | *n*-th-order Taylor Series                                      | $Y_{n}(\boldsymbol{x})$ |
+| `expectation`        | Expected Value                                                  | $E\left[Y_{n}(\boldsymbol{x})\right]$ |
+| `central_moment`     | Central Moment                                                  | $\mu_{k}\left[Y_{n}(\boldsymbol{x})\right]$ |
+| `sobol_indices`      | Partial Variances                                               | $V_{ij\ldots}\left[Y_{n}(\boldsymbol{x})\right]$ |
+| `sobol_indices`      | Sobol’ Indices                                                  | $S_{ij\ldots}\left[Y_{n}(\boldsymbol{x})\right]$ |
+| `total_sobol_indices`| Total Sobol’ Indices                                            | $S_{i}^{T}\left[Y_{n}(\boldsymbol{x})\right]$ |
+| `shapley_values`     | Shapley effects                                                 | $\phi_{i}\left[Y_{n}(\boldsymbol{x})\right]$ |
+| `remainder`          | Error of $\xi\!\left[Y_{n}(\boldsymbol{x})\right]$              | $\varepsilon\!\left[\xi\!\left[Y_{n}(\boldsymbol{x})\right]\right]$ |
+| —                    | Sensitivities, $\frac{\partial \xi[Y_n(\boldsymbol{x})]}{\partial \theta_i}$ | $S^{\xi}_{\theta_i}$ |
+
+
 # Prerequisites
 Install OTILib from https://github.com/mauriaristi/otilib. This will create a new conda environment with OTILib installed.
 
@@ -14,6 +30,7 @@ Add the TSEUQLib dependencies to the otilib conda environment with:
 conda env update -f environment.yml
 ```
 
+# Usage
 
 # Copyright
 LANL **O5031**
