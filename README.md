@@ -5,10 +5,14 @@ Construct Taylor series expansions for surrogate modelling. Compute UQ and sensi
 Install OTILib from [Link text](https://github.com/mauriaristi/otilib). This will create a new conda environment with OTILib installed.
 
 Activate the otilib conda environment, for example:
-`conda activate pyoti`
+```bash
+conda activate pyoti
+```
 
 Add the TSEUQLib dependencies to the otilib conda environment with:
-`conda env update -f environment.yml`
+```bash
+conda env update -f environment.yml
+```
 
 
 # Copyright
