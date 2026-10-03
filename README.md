@@ -37,8 +37,8 @@ conda install line_profiler sympy scipy pandas
 # Usage
 Run the examples in examples/ with python. For example, run the ishigami example by:
 ```bash
-cd TSEUQLib/examples/
-python ishigami.py
+cd examples/
+python ishigami_paper.py
 ```
 
 
