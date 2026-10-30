@@ -862,7 +862,8 @@ class tse_uq():
         
         
         #Compute shapely value
-        shap = np.zeros((1,dim))
+        # object dtype, so entries can carry the OTI parameter sensitivity
+        shap = np.zeros((1,dim), dtype=object)
         for i in range(1,dim+1):
             arr_set_shap_i = var_array_set - set([i])
             summation_terms = list(combinations(arr_set_shap_i,dim-1))
