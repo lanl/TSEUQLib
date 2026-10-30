@@ -1,0 +1,14 @@
+# Test environment for CI: pyoti from Mauricio Aristizabal's channel, the
+# rest from conda-forge. Versions are left to the solver so CI also catches
+# breakage from new releases.
+name: tseuqlib-ci
+channels:
+  - conda-forge
+dependencies:
+  - mauriaristi::pyoti
+  - numpy
+  - pandas
+  - scipy
+  - sympy
+  - line_profiler
+  - pytest

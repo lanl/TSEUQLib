@@ -1,0 +1,26 @@
+# Runs the verification suite (tests/) on every push and pull request.
+# Known bugs are strict xfails, so the run stays green until a fix makes
+# one pass; then the XPASS fails the run until its KNOWN_BUGS entry is removed.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: ci/environment-ci.yml
+          activate-environment: tseuqlib-ci
+          conda-remove-defaults: true
+      - name: Show versions
+        run: conda list | grep -E "^(python|pyoti|numpy|scipy|sympy|pytest|line_profiler) "
+      - name: Run tests
+        run: python -B -m pytest -q -p no:cacheprovider tests -rxX
