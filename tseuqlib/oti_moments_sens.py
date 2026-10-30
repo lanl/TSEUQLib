@@ -356,10 +356,10 @@ class tse_uq():
         Mi2 = 0
         Mi3 = 0
 
-        Mi1_idx = coti.imdir([[5,1]])
-        #print('M5 =', M[[Mi1_idx[0], 1]])
         
         if inc_mom and len(extra_bases)>0:
+            # basis of the parameter perturbation (was hard-coded as 5)
+            eb = extra_bases[0]
             # get contribution of sensitivity from the moments
             for ordi in range(1,order+1):
             
@@ -378,19 +378,19 @@ class tse_uq():
                     except:
                         pass
                     try:
-                        Mi2 += tmp.get_deriv([[5,2]])
+                        Mi2 += tmp.get_deriv([[eb,2]])
                     except:
                         pass
                     try:
-                        Mi3 += tmp.get_deriv([[5,3]])
+                        Mi3 += tmp.get_deriv([[eb,3]])
                     except:
                         pass
     
-            Mi1_idx = coti.imdir([[5,1]])
+            Mi1_idx = coti.imdir([[eb,1]])
             M[[Mi1_idx[0], 1]] += Mi1
-            Mi2_idx = coti.imdir([[5,2]])
+            Mi2_idx = coti.imdir([[eb,2]])
             M[[Mi2_idx[0], 2]] += Mi2
-            Mi3_idx = coti.imdir([[5,3]])
+            Mi3_idx = coti.imdir([[eb,3]])
             M[[Mi3_idx[0], 3]] += Mi3
             
             #print('M5i =', M[[Mi1_idx[0], 1]])
@@ -511,10 +511,10 @@ class tse_uq():
         Mi2 = 0
         Mi3 = 0
 
-        Mi1_idx = coti.imdir([[5,1]])
-        #print('M5 =', M[[Mi1_idx[0], 1]])
         
-        if inc_mom:
+        if inc_mom and len(extra_bases)>0:
+            # basis of the parameter perturbation (was hard-coded as 5)
+            eb = extra_bases[0]
             # get contribution of sensitivity from the moments
             for ordi in range(1,order+1):
             
@@ -537,21 +537,21 @@ class tse_uq():
                     except:
                         pass
                     try:
-                        Mi2 += tmp.get_deriv([[5,2]])
+                        Mi2 += tmp.get_deriv([[eb,2]])
                     except:
                         pass
                     try:
-                        Mi3 += tmp.get_deriv([[5,3]])
+                        Mi3 += tmp.get_deriv([[eb,3]])
                     except:
                         pass
     
-            Mi1_idx = coti.imdir([[5,1]])
+            Mi1_idx = coti.imdir([[eb,1]])
             M[[Mi1_idx[0], 1]] += Mi1
             Mi12_idx = coti.imdir([1,5])
             M[Mi12_idx] += Mi12
-            Mi2_idx = coti.imdir([[5,2]])
+            Mi2_idx = coti.imdir([[eb,2]])
             M[[Mi2_idx[0], 2]] += Mi2
-            Mi3_idx = coti.imdir([[5,3]])
+            Mi3_idx = coti.imdir([[eb,3]])
             M[[Mi3_idx[0], 3]] += Mi3
             
             #print('M5i =', M[[Mi1_idx[0], 1]])
