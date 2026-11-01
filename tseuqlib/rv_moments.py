@@ -310,7 +310,10 @@ class rv_central_moments():
                     
                     return MGF
                 
-                mgf = mgf_uniform(rv_a[i], rv_b[i], 1, self.rv_moments_order)
+                # The MGF is unused (the moments above are in closed form), and
+                # with parameter bases at order rv_moments_order+1 it can exceed
+                # pyoti's basis limit and segfault.
+                # mgf = mgf_uniform(rv_a[i], rv_b[i], 1, self.rv_moments_order)
                 '''
                 for j in range(1,self.rv_moments_order):
                     
