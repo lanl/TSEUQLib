@@ -21,6 +21,8 @@ MOMENT_CASES = [
     ("N-cubic-n3", f_cubic, ["N", "N"], [1.0, 2.0], [0.5, 0.3], 3),
     ("U-cubic-n2", f_cubic, ["U", "U"], [0.5, 1.5], [1.5, 2.5], 2),
     ("N-exp-n2", f_exp, ["N", "N"], [1.0, 2.0], [0.5, 0.3], 2),
+    # Kumaraswamy shapes a, b on [0, 1]; the paper examples use K inputs
+    ("K-exp-n2", f_exp, ["K", "K"], [2.0, 3.0], [2.5, 2.0], 2),
 ]
 MOMENT_PARAMS = [("a", 0), ("b", 0), ("b", 1)]
 
@@ -34,7 +36,12 @@ SOBOL_PARAMS = [("a", 0), ("b", 0)]
 SOBOL_CASE_N3 = ("NUT-three-n3", f_three, ["N", "U", "T"], [1.0, 1.5, 0.2], [0.5, 2.5, 1.0], 3)
 SOBOL_PARAMS_N3 = [("a", 0), ("b", 0), ("a", 1), ("b", 1), ("a", 2), ("b", 2)]
 
-SOBOL_CASES = [(SOBOL_CASE, SOBOL_PARAMS), (SOBOL_CASE_N3, SOBOL_PARAMS_N3)]
+# Kumaraswamy inputs (n = 2: the sympy oracle is slow for K at n = 3).
+SOBOL_CASE_K = ("KNK-three-n2", f_three, ["K", "N", "K"], [2.0, 1.0, 2.5], [2.5, 0.5, 3.0], 2)
+SOBOL_PARAMS_K = [("a", 0), ("b", 2)]
+
+SOBOL_CASES = [(SOBOL_CASE, SOBOL_PARAMS), (SOBOL_CASE_N3, SOBOL_PARAMS_N3),
+               (SOBOL_CASE_K, SOBOL_PARAMS_K)]
 
 
 def pid(param):

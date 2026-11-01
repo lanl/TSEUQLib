@@ -53,9 +53,18 @@ def _known(test_id):
     return []
 
 
-def _moment_params(with_marks):
+def _has_K(case):
+    # The moving-center checks verify the oracle's mode (A), not the library,
+    # and its sympy work is slow for Kumaraswamy inputs; the N, U and T cases
+    # cover mode (A). K cases keep the oracle (C) and fixed-surrogate checks.
+    return "K" in case[2]
+
+
+def _moment_params(with_marks, moving=False):
     out = []
     for c in MOMENT_CASES:
+        if moving and _has_K(c):
+            continue
         for p in MOMENT_PARAMS:
             for q in MOMENTS:
                 tid = f"{c[0]}-{pid(p)}-{q}"
@@ -75,7 +84,7 @@ def _oracle(case, param, center="fixed"):
     return _ORACLES[key]
 
 
-@pytest.mark.parametrize("case,param,qty", _moment_params(with_marks=False))
+@pytest.mark.parametrize("case,param,qty", _moment_params(with_marks=False, moving=True))
 def test_moment_fd_matches_oracle(case, param, qty):
     _, f, names, a, b, n = case
     qlib, qorc = MOMENTS[qty]
@@ -154,9 +163,11 @@ SOBOL_QTYS = {"V": (_V_lib, _V_orc), "sobol": (_sobol_lib, _sobol_orc),
               "shapley": (_shapley_lib, _shapley_orc)}
 
 
-def _sobol_params(with_marks):
+def _sobol_params(with_marks, moving=False):
     out = []
     for case, params in SOBOL_CASES:
+        if moving and _has_K(case):
+            continue
         for p in params:
             for q in SOBOL_QTYS:
                 tid = f"{case[0]}-{pid(p)}-{q}"
@@ -173,7 +184,7 @@ def _assert_entry(g, e, basis, msg):
     assert oti_deriv(g, [basis]) == pytest.approx(e, rel=REL_OTI, abs=1e-12), msg
 
 
-@pytest.mark.parametrize("case,param,qty", _sobol_params(with_marks=False))
+@pytest.mark.parametrize("case,param,qty", _sobol_params(with_marks=False, moving=True))
 def test_sobol_fd_matches_oracle(case, param, qty):
     _, f, names, a, b, n = case
     qlib, qorc = SOBOL_QTYS[qty]
