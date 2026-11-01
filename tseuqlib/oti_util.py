@@ -4,6 +4,22 @@ import pyoti.core   as coti
 import numpy as np
 
 
+# pyoti supports a limited number of OTI bases at each truncation order; past
+# it, it prints "Cant change memory" and crashes. Each pair is the first order
+# of a band and the most bases allowed in it, as printed by
+# pyoti.core.get_dHelp().print_capabilities() (the same in pyoti 1.2.1);
+# tests/test_pyoti_limits.py checks it against the installed pyoti.
+PYOTI_MAX_BASES = [(1, 65000), (2, 1000), (3, 100), (5, 10), (11, 5), (21, 3), (51, 2)]
+PYOTI_MAX_ORDER = 150
+
+
+def pyoti_max_bases(order):
+    '''Most OTI bases pyoti supports at a truncation order.'''
+    if order > PYOTI_MAX_ORDER:
+        return 0
+    return [nb for o, nb in PYOTI_MAX_BASES if o <= order][-1]
+
+
 # @profile
 def build_rv_joint_moments(mu_ind):
     """
@@ -30,6 +46,16 @@ def build_rv_joint_moments(mu_ind):
     
     order = len(mu_ind) # Maximum order
     nvars = len(mu_ind[0])# number of variables
+    
+    # Past pyoti's basis limit the direction helper returns invalid
+    # directions: raise instead.
+    for ordi in range(1,order+1):
+        if nvars > pyoti_max_bases(ordi):
+            raise ValueError(
+                f"pyoti supports at most {pyoti_max_bases(ordi)} OTI bases at "
+                f"truncation order {ordi}, and the joint moments of {nvars} "
+                f"inputs need {nvars}. Compute fewer moment orders (the k'th "
+                f"central moment of an order-n expansion needs order n*k).")
     
     mu = []
     

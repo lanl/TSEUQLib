@@ -18,6 +18,7 @@ from itertools import chain, combinations
 # #
 from line_profiler import profile
 
+from .oti_util import pyoti_max_bases
 
 
 
@@ -35,10 +36,33 @@ class tse_uq():
         
         self.n_dim = n_dim
         self.mu = mu
+        
+        # Bases the moments carry: the distribution parameters they depend on.
+        self.mu_bases = sorted(set(b for row in mu for m in row
+                                   if hasattr(m, 'get_active_bases')
+                                   for b in m.get_active_bases()))
 
         self.extra_bases = extra_bases
         
         return
+    
+    
+    def check_pyoti_bases(self, y, order):
+        '''
+        Raise a ValueError, instead of letting pyoti crash, if y and the
+        moments need more OTI bases than pyoti supports at this order.
+        '''
+        bases = set(self.mu_bases)
+        if hasattr(y, 'get_active_bases'):
+            bases |= set(y.get_active_bases())
+        cap = pyoti_max_bases(order)
+        if len(bases) > cap:
+            raise ValueError(
+                f"pyoti supports at most {cap} OTI bases at truncation order "
+                f"{order}, and this needs {len(bases)} (inputs and distribution "
+                f"parameters). The k'th central moment of an order-n expansion "
+                f"needs order n*k: use fewer parameters per run, or a lower "
+                f"order.")
     
     
     # @profile
@@ -111,6 +135,7 @@ class tse_uq():
         
         # Change y truncation order of y to k*order
         newOrd = y.order*k
+        self.check_pyoti_bases(y, newOrd)
         e1_null = oti.e(1,order=newOrd)
         
         # Dummy way to increase truncation order.
@@ -166,6 +191,8 @@ class tse_uq():
             nbasis = abases[-1]
         else:
             return y.real
+        
+        self.check_pyoti_bases(y, order)
         
         # Keep the requested bases and every parameter basis.
         keep = sorted(set(blist) | set(b for b in abases if b > self.n_dim))
