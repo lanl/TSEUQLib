@@ -645,10 +645,11 @@ class tse_uq():
         if l<1:
             raise ValueError('l must be an integer greater than 1 in oti_uq.tse_remainder()')
         
+        # truncate_order(m) keeps the orders below m
         if n==0:
-            return y.truncate_order(n+l) - y.real
+            return y.truncate_order(n+l+1) - y.real
         else:
-            return y.truncate_order(n+l) - y.truncate_order(n)
+            return y.truncate_order(n+l+1) - y.truncate_order(n+1)
             
         
     
