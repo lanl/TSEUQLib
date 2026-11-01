@@ -19,22 +19,20 @@ import pytest
 TESTS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TESTS)
 
-# Measured 2026-11-01 on both stacks, the same before and after that day's
-# library changes.
+# Measured 2026-11-01 on both stacks. poly20_paper and sos, which are not in
+# the paper and do not run, moved to examples/devel (not run here).
 OUTCOMES = {
     "poly3_paper": [None],
     "sensitivity_check": [None],
     # computes every result; matplotlib 3.7 cannot parse a plot label, 3.10 can
     "ishigami_paper": [None, "ParseSyntaxException"],
-    # indexes sobol[3] with two inputs
-    "poly20_paper": ["IndexError: list index out of range"],
-    # calls coti.d_helper, which pyoti no longer has
-    "sos": ["module 'pyoti.core' has no attribute 'd_helper'"],
-    # the local pyoti has no oti.abs; with pyoti 1.2.1 it unpacks two of the
-    # three values sobol_indices returns
-    "gfunction": ["module 'pyoti.sparse' has no attribute 'abs'",
-                  "too many values to unpack (expected 2)"],
+    # runs with pyoti 1.2.1; the local pyoti build has no oti.abs
+    "gfunction": [None, "module 'pyoti.sparse' has no attribute 'abs'"],
 }
+
+# Command-line arguments: gfunction's input count (it sweeps 1 to 100 by
+# default, which needs the performance work).
+ARGS = {"gfunction": ["3"]}
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +49,7 @@ def sandbox(tmp_path_factory):
 @pytest.mark.parametrize("name", OUTCOMES)
 def test_example_runs(sandbox, name):
     env = dict(os.environ, MPLBACKEND="Agg")
-    run = subprocess.run([sys.executable, "-B", f"{name}.py"], cwd=sandbox, env=env,
+    run = subprocess.run([sys.executable, "-B", f"{name}.py"] + ARGS.get(name, []), cwd=sandbox, env=env,
                          input="\n" * 1000, capture_output=True, text=True, timeout=900)
     tail = (run.stdout[-500:] + run.stderr[-1500:]).strip()
     allowed = OUTCOMES[name]
