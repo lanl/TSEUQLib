@@ -14,6 +14,7 @@ and every quantity below is a polynomial moment of T_n in z, which needs only
 the central moments mu_{i,k}(p) of each input.
 """
 
+from functools import wraps
 from itertools import combinations, product
 from math import factorial
 
@@ -28,6 +29,7 @@ def _rv_mean_and_central_moments(name, a, b, kmax):
     Parameter conventions follow tseuqlib.rv_moments:
       'N': a = mean, b = standard deviation
       'U': support [a, b]
+      'T': symmetric triangle on [a, b] (mode at the midpoint)
       'K': Kumaraswamy shape a and b on [0, 1]
     """
     if name == "N":
@@ -36,6 +38,11 @@ def _rv_mean_and_central_moments(name, a, b, kmax):
     elif name == "U":
         mean = (a + b) / 2
         mu = [sp.Integer(0) if k % 2 else ((b - a) / 2)**k / (k + 1) for k in range(1, kmax + 1)]
+    elif name == "T":
+        # half-width w: mu_2m = 2 w^(2m) / ((2m + 1)(2m + 2))
+        mean = (a + b) / 2
+        w = (b - a) / 2
+        mu = [sp.Integer(0) if k % 2 else 2 * w**k / ((k + 1) * (k + 2)) for k in range(1, kmax + 1)]
     elif name == "K":
         raw = [sp.Integer(1)] + [b * sp.beta(1 + sp.Integer(j) / a, b) for j in range(1, kmax + 1)]
         mean = raw[1]
@@ -44,6 +51,19 @@ def _rv_mean_and_central_moments(name, a, b, kmax):
     else:
         raise ValueError(f"no oracle for distribution {name!r}")
     return mean, mu
+
+
+def _memo(method):
+    """Cache a method's result per argument tuple: the sympy work is slow, and
+    the tests ask the same oracle the same questions."""
+    @wraps(method)
+    def wrapper(self, *args):
+        cache = self.__dict__.setdefault("_memo", {})
+        key = (method.__name__,) + args
+        if key not in cache:
+            cache[key] = method(self, *args)
+        return cache[key]
+    return wrapper
 
 
 class TSEOracle:
@@ -122,13 +142,16 @@ class TSEOracle:
             out += term
         return out
 
+    @_memo
     def expectation(self):
         return self._expect(self.T)
 
+    @_memo
     def central_moment(self, k):
         ET = self.expectation()
         return self._expect((self.T - ET)**k)
 
+    @_memo
     def closed_variance(self, u):
         """Var(E[T | z_u]) for a tuple of input indices u."""
         if len(u) == 0:
@@ -137,6 +160,7 @@ class TSEOracle:
         Eg = self._expect(g)
         return self._expect((g - Eg)**2)
 
+    @_memo
     def partial_variances(self):
         """V_u of the ANOVA decomposition for every non-empty u, by Moebius
         inversion of the closed variances: V_u = sum_{v subset u} (-1)^{|u|-|v|} Vc_v."""
@@ -151,11 +175,13 @@ class TSEOracle:
                            for s in range(len(u) + 1) for v in combinations(u, s))
         return V, Vc
 
+    @_memo
     def sobol_indices(self):
         V, _ = self.partial_variances()
         Vt = self.central_moment(2)
         return {u: Vu / Vt for u, Vu in V.items()}
 
+    @_memo
     def total_sobol_indices(self):
         Vt = self.central_moment(2)
         out = []
@@ -164,6 +190,7 @@ class TSEOracle:
             out.append(1 - self.closed_variance(rest) / Vt)
         return out
 
+    @_memo
     def shapley_effects(self):
         """phi_i = sum over u not containing i of
         |u|! (d - |u| - 1)! / d! * (Vc(u + i) - Vc(u)) / V."""
@@ -187,5 +214,6 @@ class TSEOracle:
         e = expr.subs(P, self.p0) if self.p0 is not None else expr
         return float(sp.N(e, 30))
 
+    @_memo
     def deriv(self, expr):
         return float(sp.N(sp.diff(expr, P).subs(P, self.p0), 30))

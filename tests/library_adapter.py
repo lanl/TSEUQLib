@@ -18,29 +18,31 @@ import tseuqlib.oti_util as uoti  # noqa: E402
 import tseuqlib.rv_moments as rv  # noqa: E402
 
 
-def build(f, names, a, b, n, param=None, kmax=None, module=moti_sens):
+def build(f, names, a, b, n, param=None, kmax=None, module=moti, pass_extra=True):
     """Build the TSE and the tse_uq object.
 
-    The parameter (which, i) gets the extra OTI basis d + 1. The mean comes
-    from rv_central_moments, because rv_mean_from_ab calls np.sqrt and fails
-    on OTI numbers.
+    param is one parameter (which, i) or a list of them; parameter j gets
+    the OTI basis d + 1 + j, returned in that order. pass_extra=False leaves
+    extra_bases out, which the library should not need. The mean comes from
+    rv_central_moments, because rv_mean_from_ab calls np.sqrt and fails on
+    OTI numbers.
     """
     d = len(names)
     a = np.array(list(a), dtype=object)
     b = np.array(list(b), dtype=object)
+    params = [] if param is None else [param] if isinstance(param, tuple) else list(param)
     extra = []
-    if param is not None:
-        which, i = param
+    for j, (which, i) in enumerate(params):
         tgt = a if which == "a" else b
-        tgt[i] = tgt[i] + oti.e(d + 1, order=1)
-        extra = [d + 1]
+        tgt[i] = tgt[i] + oti.e(d + 1 + j, order=1)
+        extra.append(d + 1 + j)
     with contextlib.redirect_stdout(io.StringIO()):
         mom = rv.rv_central_moments([np.array(names), a, b], kmax or 4 * n)
         mom.compute_central_moments()
     x = [mom.rv_mean[i] + oti.e(i + 1, order=n) for i in range(d)]
     y = f(x, oti)
     joint = uoti.build_rv_joint_moments(mom.rv_mu)
-    return module.tse_uq(d, joint, extra_bases=extra), y, extra
+    return module.tse_uq(d, joint, extra_bases=extra if pass_extra else []), y, extra
 
 
 def real(v):

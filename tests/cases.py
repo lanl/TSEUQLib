@@ -28,6 +28,14 @@ MOMENT_PARAMS = [("a", 0), ("b", 0), ("b", 1)]
 SOBOL_CASE = ("NNU-three-n2", f_three, ["N", "N", "U"], [1.0, 2.0, 0.5], [0.5, 0.3, 1.5], 2)
 SOBOL_PARAMS = [("a", 0), ("b", 0)]
 
+# n = 3: the z1 z2^2 term of x1 x2^2 makes E[T | x1] depend on the spread of
+# x2, so its sensitivity needs the e_1 * e_p cross term (missed until
+# 2026-11-01). Every parameter of each input.
+SOBOL_CASE_N3 = ("NUT-three-n3", f_three, ["N", "U", "T"], [1.0, 1.5, 0.2], [0.5, 2.5, 1.0], 3)
+SOBOL_PARAMS_N3 = [("a", 0), ("b", 0), ("a", 1), ("b", 1), ("a", 2), ("b", 2)]
+
+SOBOL_CASES = [(SOBOL_CASE, SOBOL_PARAMS), (SOBOL_CASE_N3, SOBOL_PARAMS_N3)]
+
 
 def pid(param):
     return f"{param[0]}{param[1] + 1}"

@@ -29,6 +29,8 @@ class tse_uq():
         Args:
             - n_dim (int): number of random variables
             - mu (list): joint central moments of the random variables
+            - extra_bases (list): optional, kept for compatibility. Every
+              OTI basis above n_dim is treated as a distribution parameter.
         '''
         
         self.n_dim = n_dim
@@ -46,47 +48,14 @@ class tse_uq():
             
              E[ y ]
             
+        OTI bases above n_dim are distribution parameters: the result
+        carries the derivative with respect to each of them.
+            
         Args:
             - y (oti number):  OTI with the TSE.
         
         """
-        if type(y)==float:
-            return y
-        
-        # Direction helper from OTI.
-        h     = coti.get_dHelp()
-
-        # get active bases in y
-        abases = y.get_active_bases()
-        
-        # define number of bases
-        if len(abases)!=0:
-            nbasis = self.n_dim # abases[-1]
-        else:
-            return y.real
-        
-        # Gets the order of the number.
-        order = y.order 
-        
-        # initialize expectation of Taylor series with the zero'th-order term
-        M = y.real
-
-        for ordi in range(1,order+1):
-         
-            nimord = coti.ndir_order(nbasis, ordi)
-            
-            for idx in range(nimord):
-                
-                # Get the imaginary coeff. for the direction given by [idx, ordi]
-                coeff = y[[idx,ordi]]
-                
-                # get the joint central moment of the random variables
-                mu_oi = self.mu[ordi-1][idx]
-                
-                # substitute joint central moment with delta_xi in Eq. 11
-                M += coeff*mu_oi
-        
-        return M
+        return self.conditional_expectation(y, [])
 
 
     
@@ -142,7 +111,7 @@ class tse_uq():
         
         # Change y truncation order of y to k*order
         newOrd = y.order*k
-        e1_null = oti.e(int(self.n_dim+1),order=newOrd)
+        e1_null = oti.e(1,order=newOrd)
         
         # Dummy way to increase truncation order.
         yprime = y + 0 * e1_null
@@ -165,6 +134,11 @@ class tse_uq():
                from the OTI number y.
             
              E[ y | x_{basis[0]}, x_{basis[1]}, ... ]
+        
+        OTI bases above n_dim are distribution parameters. They are always
+        kept, and moments that depend on them are multiplied into each kept
+        term, so the result carries the derivative with respect to every
+        parameter.
             
         @param[in] y:  OTI with the TSE.
         @param[in] mu: structure with the moments of the variables in y.
@@ -172,16 +146,13 @@ class tse_uq():
         
         """
 
-        if type(y)==float:
+        if not hasattr(y, 'get_active_bases'):
             return y
         
         if type(basis)== int:
             blist = [basis]
         else:
-            blist = basis
-        
-        if len(basis)==0:
-            return self.expectation(y)
+            blist = list(basis)
         
         # Direction helper from OTI.
         h     = coti.get_dHelp()
@@ -196,9 +167,15 @@ class tse_uq():
         else:
             return y.real
         
-        # Assume that the result is an OTI with certain 
-        # number of basis and truncation order.
-        M = oti.sotinum(y.real, len(basis), order)
+        # Keep the requested bases and every parameter basis.
+        keep = sorted(set(blist) | set(b for b in abases if b > self.n_dim))
+        
+        # The result is a real number if nothing is kept, otherwise an
+        # OTI number in the kept bases.
+        if len(keep)==0:
+            M = y.real
+        else:
+            M = oti.sotinum(y.real, len(keep), order)
         
         for ordi in range(1,order+1):
             
@@ -209,6 +186,9 @@ class tse_uq():
                 # Get the imaginary coeff.
                 coeff = y[[idx,ordi]]
                 
+                if coeff == 0:
+                    continue
+                
                 i_mu = idx
                 o_mu = ordi
                 
@@ -216,7 +196,7 @@ class tse_uq():
                 i_rem = 0
                 o_rem = 0
                 
-                for i in blist:
+                for i in keep:
                     
                     # Remove imdir i from the main dir.
                     im = i-1
@@ -255,11 +235,26 @@ class tse_uq():
                     # Find the remaining of the derivative.
                     mu_oi = self.mu[o_mu-1][i_mu]
                 
-                # print(coeff,mu_oi)
-                #print(h.get_fulldir(idx,ordi))
-                #print(coeff)
-                #print(mu_oi.real)
-                M[[i_rem,o_rem]] += coeff*mu_oi
+                term = coeff*mu_oi
+                
+                if not hasattr(term, 'get_active_bases'):
+                    
+                    # A plain moment: add it to the kept direction.
+                    if o_rem == 0:
+                        M += term
+                    else:
+                        M[[i_rem,o_rem]] += term
+                
+                else:
+                    
+                    # The moment depends on parameters: multiply it into
+                    # the kept direction, so d mu/dp reaches every kept term.
+                    if o_rem == 0:
+                        M = M + term
+                    else:
+                        e_rem = oti.sotinum(0.0, 1, order)
+                        e_rem[[i_rem,o_rem]] = 1.0
+                        M = M + term*e_rem
         
         return M
     
@@ -344,6 +339,15 @@ class tse_uq():
             for j in range(nterms):
                 sobol_i[j] = V[ordi][j]/Vtotal
             sobol.append(sobol_i)
+        
+        # Orders above the expansion order have zero partial variance:
+        # pad them, so the result runs to n_dim (or to max_order).
+        top = self.n_dim if max_order is None else min(max_order, self.n_dim)
+        for ordi in range(len(HDMR), top+1):
+            nterms = len(list(combinations(range(self.n_dim), ordi)))
+            HDMR.append([0]*nterms)
+            V.append([0]*nterms)
+            sobol.append([0]*nterms)
         return sobol, V, HDMR
 
 
@@ -394,14 +398,13 @@ class tse_uq():
         HDMR_functions = [[f0]]
 
         if max_order is None:
-            max_order = max(tse_order,dim)
+            max_order = min(tse_order,dim)
         else:
             max_order = min(max_order,min(tse_order,dim))
         # end
-        max_order = dim 
         
         # There should be a function that computes the HDMR representation.
-        for i in range(1, dim+1):
+        for i in range(1, max_order+1):
             
             terms = list(combinations(var_arr,i))[::-1] 
             
@@ -432,7 +435,7 @@ class tse_uq():
                         f_hdmr -= HDMR_functions[ordj][idx]
                 
                 
-                HDMR_functions_level[i_term] = f_hdmr # - f0
+                HDMR_functions_level[i_term] = f_hdmr
             
             srch_struct.append(srch_struct_level)
             term_struct.append(terms)
@@ -549,7 +552,8 @@ class tse_uq():
         
         
         #Compute shapely value
-        shap = np.zeros((1,dim))
+        # object dtype, so entries can carry the OTI parameter sensitivity
+        shap = np.zeros((1,dim), dtype=object)
         for i in range(1,dim+1):
             arr_set_shap_i = var_array_set - set([i])
             summation_terms = list(combinations(arr_set_shap_i,dim-1))
@@ -693,11 +697,6 @@ class tse_uq():
             Si_rem_tmp = [0]*len(Si_Ynl[i])
             Vi_rem_tmp = [0]*len(Si_Ynl[i])
             for j, s in enumerate(Si_Ynl[i]):
-                #if (i+1)>n:
-                #    Si_rem_tmp[j] = s
-                #    Vi_rem_tmp[j] = Vi_Ynl[i][j]
-                #else:
-                print(Si_Yn)
                 Si_rem_tmp[j] = s - Si_Yn[i][j]
                 Vi_rem_tmp[j] = Vi_Ynl[i][j] - Vi_Yn[i][j]
             Si_rem.append(Si_rem_tmp)

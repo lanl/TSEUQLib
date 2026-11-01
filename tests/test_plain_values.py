@@ -8,18 +8,17 @@ import pytest
 import sympy as sp
 
 from cases import MOMENT_CASES, SOBOL_CASE
-from library_adapter import build, moti, moti_sens, real
+from library_adapter import build, real
 from oracle import TSEOracle
 
 REL = 1e-12
 
 
-@pytest.mark.parametrize("module", [moti, moti_sens], ids=["oti_moments", "oti_moments_sens"])
 @pytest.mark.parametrize("case", MOMENT_CASES, ids=[c[0] for c in MOMENT_CASES])
-def test_moments(case, module):
+def test_moments(case):
     _, f, names, a, b, n = case
     orc = TSEOracle(lambda x: f(x, sp), names, a, b, n)
-    tq, y, _ = build(f, names, a, b, n, module=module)
+    tq, y, _ = build(f, names, a, b, n)
     assert real(tq.expectation(y)) == pytest.approx(orc.value(orc.expectation()), rel=REL)
     for k in (2, 3, 4):
         assert real(tq.central_moment(y, k)) == pytest.approx(
@@ -30,7 +29,7 @@ def test_moments(case, module):
 def sobol_pair():
     _, f, names, a, b, n = SOBOL_CASE
     orc = TSEOracle(lambda x: f(x, sp), names, a, b, n)
-    tq, y, _ = build(f, names, a, b, n, module=moti)
+    tq, y, _ = build(f, names, a, b, n)
     return orc, tq, y
 
 
@@ -53,3 +52,25 @@ def test_shapley_v2_is_unnormalized(sobol_pair):
     Vt = orc.value(orc.central_moment(2))
     expected = [orc.value(v) * Vt for v in orc.shapley_effects()]
     assert shap == pytest.approx(expected, rel=REL)
+
+
+def test_sobol_orders_padded_to_dimension(sobol_pair):
+    """Orders above n have zero partial variance and are padded up to d, so
+    the result keeps the shape oti_moments always returned."""
+    orc, tq, y = sobol_pair
+    sob, V, hdmr = tq.sobol_indices(y)
+    assert y.order < orc.d
+    assert [len(s) for s in sob] == [len(list(combinations(range(orc.d), r))) for r in range(orc.d + 1)]
+    for r in range(y.order + 1, orc.d + 1):
+        assert sob[r] == [0] * len(sob[r]) and V[r] == [0] * len(V[r]) and hdmr[r] == [0] * len(hdmr[r])
+
+
+def test_sobol_max_order(sobol_pair):
+    """max_order limits the orders computed (oti_moments used to ignore it)."""
+    orc, tq, y = sobol_pair
+    sob_full, V_full, _ = tq.sobol_indices(y)
+    sob, V, hdmr = tq.sobol_indices(y, max_order=1)
+    assert len(sob) == len(V) == len(hdmr) == 2
+    for j in range(orc.d):
+        assert real(sob[1][j]) == pytest.approx(real(sob_full[1][j]), rel=REL)
+        assert real(V[1][j]) == pytest.approx(real(V_full[1][j]), rel=REL)
