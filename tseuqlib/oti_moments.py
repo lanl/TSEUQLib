@@ -190,7 +190,7 @@ class tse_uq():
         if len(abases)!=0:
             nbasis = abases[-1]
         else:
-            return y.real
+            return np.float64(y.real)
         
         self.check_pyoti_bases(y, order)
         
@@ -283,6 +283,11 @@ class tse_uq():
                         e_rem[[i_rem,o_rem]] = 1.0
                         M = M + term*e_rem
         
+        # A real result is a numpy float, as before, so dividing by an exact
+        # zero (e.g. a vanishing partial variance) gives inf, not an error.
+        if not hasattr(M, 'get_active_bases'):
+            M = np.float64(M)
+        
         return M
     
 
@@ -372,9 +377,9 @@ class tse_uq():
         top = self.n_dim if max_order is None else min(max_order, self.n_dim)
         for ordi in range(len(HDMR), top+1):
             nterms = len(list(combinations(range(self.n_dim), ordi)))
-            HDMR.append([0]*nterms)
-            V.append([0]*nterms)
-            sobol.append([0]*nterms)
+            HDMR.append([np.float64(0.0)]*nterms)
+            V.append([np.float64(0.0)]*nterms)
+            sobol.append([np.float64(0.0)]*nterms)
         return sobol, V, HDMR
 
 

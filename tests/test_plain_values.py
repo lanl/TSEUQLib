@@ -74,3 +74,18 @@ def test_sobol_max_order(sobol_pair):
     for j in range(orc.d):
         assert real(sob[1][j]) == pytest.approx(real(sob_full[1][j]), rel=REL)
         assert real(V[1][j]) == pytest.approx(real(V_full[1][j]), rel=REL)
+
+
+def test_real_results_are_numpy_floats(sobol_pair):
+    """Real results, padded orders included, are numpy floats, as before
+    2026-11-01: ishigami_paper divides by an exactly vanishing partial
+    variance and expects inf with a warning, not ZeroDivisionError."""
+    orc, tq, y = sobol_pair
+    sob, V, hdmr = tq.sobol_indices(y)
+    assert isinstance(tq.expectation(y), np.floating)
+    assert isinstance(tq.central_moment(y, 2), np.floating)
+    for r in range(1, orc.d + 1):
+        for v in V[r] + sob[r]:
+            assert isinstance(v, np.floating), (r, type(v))
+    with np.errstate(divide="ignore"):
+        assert np.isinf(1.0 / V[orc.d][0])  # the padded order above n
