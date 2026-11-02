@@ -177,8 +177,9 @@ class tse_central_moment():
                 ev5i[c1, i] = (S5[c1, i, i, i, i, i] * mx05[i]) / 120
                 for j in range(n):
                     if i != j:
-                        ev5ij[c1, i, j] = (S5[c1, i, i, j, j, j] * mx02[i] * mx03[j]) / 12 + \
-                                          (S5[c1, i, i, i, j, j] * mx03[i] * mx02[j]) / 12
+                        # over ordered pairs this one term covers both (2, 3)
+                        # and (3, 2); adding its mirror counted them twice
+                        ev5ij[c1, i, j] = (S5[c1, i, i, j, j, j] * mx02[i] * mx03[j]) / 12
                                           
         for c1 in range(nPoints):
             evFifth[c1] = evFourth[c1] + sum(ev5i[c1, :]) + np.sum(ev5ij[c1, :, :])
@@ -198,8 +199,8 @@ class tse_central_moment():
         tuple
             - First-order variance.
             - Main effect Sobol indices of the first order Taylor series expansion.
-            - Two variable interaction effect Sobol indices of the second order Taylor series expansion.
-            - Two variable interaction effect partial variances of the first order Taylor series expansion.
+            - Main effect partial variances of the first order Taylor series expansion.
+            (A first-order expansion has no interaction terms.)
         """
         
         S1 = self.S1
@@ -507,7 +508,7 @@ class tse_central_moment():
                         + (S4[c1,i,i,j,j]*S3[c1,j,j,j]*mx02[i]*mx05[j])/12 \
                         + (S4[c1,i,i,i,j]*S4[c1,j,j,j,j]*mx03[i]*mx05[j])/72 \
                         + (S4[c1,i,i,j,j]*S4[c1,j,j,j,j]*mx02[i]*mx06[j])/48 \
-                        + (S4[c1,i,i,j,j]*S3[c1,j,j,j]*mx02[i]*mx02[j]*mx03[j])/12 \
+                        - (S4[c1,i,i,j,j]*S3[c1,j,j,j]*mx02[i]*mx02[j]*mx03[j])/12 \
                         - (S4[c1,i,i,j,j]*S4[c1,j,j,j,j]*mx02[i]*mx02[j]*mx04[j])/48 
                         
                     for k in range(n):
