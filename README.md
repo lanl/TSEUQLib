@@ -37,11 +37,66 @@ python -m pytest tests
 Add `-n auto` to spread them over all cores, as CI does.
 
 # Usage
-Run the examples in examples/ with python. For example, run the ishigami example by:
-```bash
-cd examples/
-python ishigami_paper.py
+
+## Workflow
+
+```mermaid
+flowchart TD
+    A["Model as code, inputs as distributions"] --> B["Pick an expansion order n"]
+    B --> C["Evaluate the model once in OTI arithmetic, to order n + 2:<br/>tse(model, mean, n + 2) carries every derivative up to it"]
+    C --> D["Quantities of T<sub>n</sub>: mean, central moments,<br/>Sobol', total Sobol', Shapley"]
+    D --> E{"Remainder R<sub>n,2</sub> = Q[T<sub>n+2</sub>] - Q[T<sub>n</sub>]<br/>small enough?"}
+    E -- no --> F["Raise n"] --> C
+    E -- yes --> G["Report the quantities and their sensitivities<br/>to the inputs' distribution parameters"]
 ```
+
+Look two orders ahead: the next order alone can add little while the one after does not (see panel (b) of the cantilever example).
+
+## Quick start
+
+```python
+import numpy as np
+import tseuqlib as tuq
+
+def model(x):  # ordinary code; it also runs on OTI numbers
+    P, E, L = x
+    return 4e-6 * P * L**3 / (E * 0.05 * 0.1**3)
+
+names = np.array(["N", "LN", "U"])  # normal load, lognormal modulus, uniform length
+a = np.array([1000.0, np.log(200.0), 1.95], dtype=object)
+b = np.array([100.0, 0.05, 2.05], dtype=object)
+n = 3
+
+mom = tuq.rv_central_moments([names, a, b], 4 * n)
+mom.compute_central_moments()
+tq = tuq.tse_uq(len(names), tuq.build_rv_joint_moments(mom.rv_mu))
+y = tuq.tse(model, mom.rv_mean, n)  # T_3, from one evaluation of the model
+
+mean, var = tq.expectation(y), tq.central_moment(y, 2)
+S, V = tq.sobol_indices_by_term(y)  # S[(1,)], S[(1, 2)], ... keyed by input numbers
+S_total = tq.total_sobol_indices(y)
+miss = tq.remainder(tq.central_moment, y, 1, 2, 2)  # how much T_1's variance misses
+print(mean, var, S[(1,)], S_total, miss)
+```
+
+For sensitivities to a distribution parameter, give it its own OTI basis above the inputs' (here the standard deviation of the load, on basis 4) and compute as before. Every quantity then carries the derivative; any number of parameters can be followed at once, one basis each.
+
+```python
+import pyoti.sparse as oti
+
+b[0] = 100.0 + oti.e(4, order=1)
+mom = tuq.rv_central_moments([names, a, b], 4 * n)
+mom.compute_central_moments()
+tq = tuq.tse_uq(len(names), tuq.build_rv_joint_moments(mom.rv_mu))
+var = tq.central_moment(tuq.tse(model, mom.rv_mean, n), 2)
+print(var.real, var.get_deriv([4]))  # the variance, and its derivative in the load's sd
+```
+
+## Examples
+
+- [`examples/cantilever_beam.py`](examples/cantilever_beam.py): the workflow above, step by step, on a cantilever with five uncertain inputs, compared with the true model.
+- [`examples/verification`](examples/verification/README.md): the checks behind every number.
+- `examples/ishigami_paper.py`, `examples/poly3_paper.py`: the examples of the TSEUQLib paper. Run them from `examples/`, e.g. `cd examples && python ishigami_paper.py`.
 
 
 # Copyright
