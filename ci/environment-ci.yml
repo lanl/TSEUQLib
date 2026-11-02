@@ -1,11 +1,9 @@
 # Test environment for CI: pyoti from Mauricio Aristizabal's channel, the
-# rest from conda-forge. Versions other than Python are left to the solver.
-# CI caches the solved environment and solves again when this file changes,
-# when CACHE_NUMBER in the workflow is bumped, or after 7 days without a run
-# (GitHub deletes unused caches); only then does CI pick up new releases, so
-# check the "Show versions" step when a run after a break fails. Python is
-# pinned because pyoti ships only for 3.13; leaving it open made the solver
-# search down from the newest Python (a 7-minute solve).
+# rest from conda-forge. Versions other than Python are left to the solver,
+# so CI also catches breakage from new releases (the "Show versions" step
+# says which ran). Python is pinned because pyoti ships only for 3.13;
+# leaving it open made the solver search down from the newest Python (a
+# 7-minute solve).
 name: tseuqlib-ci
 channels:
   - conda-forge

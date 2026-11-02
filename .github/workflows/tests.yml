@@ -10,39 +10,19 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
-    env:
-      # Bump to solve the environment again without editing its file.
-      CACHE_NUMBER: 0
     defaults:
       run:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v7
+      # Solved fresh on every run (about 45 s with Python pinned), so CI
+      # tests the newest releases. A cached environment saved at most ~40 s
+      # and its test runs were twice as slow (2026-11-02), so we dropped it.
       - uses: conda-incubator/setup-miniconda@v4
         with:
+          environment-file: ci/environment-ci.yml
           activate-environment: tseuqlib-ci
           conda-remove-defaults: true
-      # The solved environment is cached and reused until
-      # ci/environment-ci.yml changes (or GitHub drops the cache after 7 days
-      # unused, or a new branch's first run); solving it takes minutes. It is
-      # saved right after it is built, so a failing test run still keeps it.
-      # Only the env's own folder: the runner can't reset envs/'s metadata,
-      # which made tar fail on restore.
-      - name: Restore the conda environment
-        id: cache
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ env.CONDA }}/envs/tseuqlib-ci
-          key: conda-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ci/environment-ci.yml') }}-${{ env.CACHE_NUMBER }}
-      - name: Create the environment (cache miss only)
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: conda env update -n tseuqlib-ci -f ci/environment-ci.yml
-      - name: Save the conda environment (cache miss only)
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ env.CONDA }}/envs/tseuqlib-ci
-          key: ${{ steps.cache.outputs.cache-primary-key }}
       - name: Show versions
         run: conda list | grep -E "^(python|pyoti|numpy|scipy|sympy|pytest|pytest-xdist|line_profiler) "
       - name: Run tests
