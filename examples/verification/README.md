@@ -1,9 +1,11 @@
 # Verification
 
-Two figures. The first checks the implementation: every quantity and
+Three figures. The first checks the implementation: every quantity and
 sensitivity against the exact answer for the same Taylor expansion. The
 second checks the method: on polynomial models, the quantities equal the
-model's own exact values once the expansion order reaches the degree.
+model's own exact values once the expansion order reaches the degree. The
+third is for readers who trust sampling: Monte Carlo on the surrogate
+converges to TSEUQLib's numbers.
 
 ## The implementation
 
@@ -103,6 +105,19 @@ expansions at three inputs.
 python -B examples/verification/polynomial_exactness.py   # about 15 s; writes polynomial_results.csv
 python -B examples/verification/plot_polynomial_exactness.py
 ```
+
+## Monte Carlo
+
+![Sampling the surrogate converges to TSEUQLib's values](../plots/mc_convergence.png)
+
+TSEUQLib integrates the Taylor series exactly, so sampling the series
+itself must approach its numbers with error shrinking like N^(-1/2) and no
+floor; a mistake in the library would show as the error levelling off at
+its size. Here T_3 of the cantilever in `examples/cantilever_beam.py` (five
+inputs, one of each distribution) is sampled up to 10^7 times in each of 10
+independent runs (`mc_convergence.py`, about 2 min). At 10^7 samples the
+mean is off by 2e-5 to 1.5e-4 relative, as its standard error (9e-5)
+predicts.
 
 ## Also checked
 

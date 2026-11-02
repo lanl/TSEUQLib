@@ -28,11 +28,20 @@ OUTCOMES = {
     "ishigami_paper": [None, "ParseSyntaxException"],
     # runs with pyoti 1.2.1; the local pyoti build has no oti.abs
     "gfunction": [None, "module 'pyoti.sparse' has no attribute 'abs'"],
+    # added 2026-11-02
+    "cantilever_beam": [None],
+    "verification/polynomial_exactness": [None],
+    "verification/plot_polynomial_exactness": [None],
+    "verification/plot_verification": [None],
+    "verification/mc_convergence": [None],
 }
 
 # Command-line arguments: gfunction's input count (it sweeps 1 to 100 by
-# default, which needs the performance work).
-ARGS = {"gfunction": ["3"]}
+# default, which needs the performance work), and the quick modes of the
+# verification runners (verify_all takes 45 min and is not run here).
+ARGS = {"gfunction": ["3"],
+        "verification/polynomial_exactness": ["--quick", "--out", "quick.csv"],
+        "verification/mc_convergence": ["--quick"]}
 
 
 @pytest.fixture(scope="module")
@@ -43,6 +52,8 @@ def sandbox(tmp_path_factory):
                     ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copytree(os.path.join(ROOT, "examples"), root / "examples",
                     ignore=shutil.ignore_patterns("__pycache__", "devel"))
+    # the verification scripts import the test oracle and adapter
+    shutil.copytree(TESTS, root / "tests", ignore=shutil.ignore_patterns("__pycache__"))
     return root / "examples"
 
 
