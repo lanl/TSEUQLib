@@ -89,3 +89,46 @@ def test_real_results_are_numpy_floats(sobol_pair):
             assert isinstance(v, np.floating), (r, type(v))
     with np.errstate(divide="ignore"):
         assert np.isinf(1.0 / V[orc.d][0])  # the padded order above n
+
+
+def f_five(x, m):
+    # every order of interaction up to 3, among five inputs
+    return x[0] * x[1] * x[2] + x[0] * x[3]**2 + x[1] * x[4] + m.exp(x[2] / 3) * x[4] + x[3]**3
+
+
+@pytest.mark.parametrize("d", [2, 3, 4, 5])
+def test_term_labels_match_build_hdmr(d):
+    """term_labels names the terms in build_hdmr's (and sobol_indices') order,
+    which for d >= 4 is not itertools.combinations order."""
+    tq, y, _ = build(lambda x, m: sum(x)**3, ["N"] * d, [1.0] * d, [0.5] * d, 3)
+    _, terms, _ = tq.build_hdmr(y)
+    for r in range(1, len(terms)):
+        assert tq.term_labels(r) == [tuple(sorted(t)) for t in terms[r]], r
+
+
+def test_sobol_indices_by_term_five_inputs():
+    """Labeled Sobol' indices and partial variances against the oracle, subset
+    by subset, with five inputs (pairs and triples both out of combinations
+    order)."""
+    names, a, b = ["N"] * 5, [1.0, 2.0, 0.5, 0.3, 1.5], [0.5, 0.3, 0.4, 0.2, 0.3]
+    orc = TSEOracle(lambda x: f_five(x, sp), names, a, b, 3)
+    tq, y, _ = build(f_five, names, a, b, 3)
+    S, V = tq.sobol_indices_by_term(y)
+    S_or = orc.sobol_indices()
+    V_or, _ = orc.partial_variances()
+    assert len(S) == len(V) == 2**5 - 1
+    for u, s_exact in S_or.items():
+        key = tuple(i + 1 for i in u)
+        assert real(S[key]) == pytest.approx(orc.value(s_exact), rel=REL, abs=1e-14), key
+        assert real(V[key]) == pytest.approx(orc.value(V_or[u]), rel=REL, abs=1e-14), key
+
+
+@pytest.mark.parametrize("name", ["B", "n", "Normal"])
+def test_unknown_distribution_raises(name):
+    """An unsupported or misspelled name raises; until 2026-11-01 it silently
+    made the input a constant 0."""
+    from library_adapter import rv
+    mom = rv.rv_central_moments([np.array([name, "N"]), np.array([1.0, 1.0], dtype=object),
+                                 np.array([2.0, 0.5], dtype=object)], 4)
+    with pytest.raises(ValueError, match="unknown distribution"):
+        mom.compute_central_moments()

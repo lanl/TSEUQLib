@@ -31,6 +31,7 @@ def _rv_mean_and_central_moments(name, a, b, kmax):
       'U': support [a, b]
       'T': symmetric triangle on [a, b] (mode at the midpoint)
       'K': Kumaraswamy shape a and b on [0, 1]
+      'LN': log x ~ N(a, b^2) (a, b: mean and standard deviation of log x)
     """
     if name == "N":
         mean = a
@@ -48,6 +49,12 @@ def _rv_mean_and_central_moments(name, a, b, kmax):
         mean = raw[1]
         mu = [sum(sp.binomial(k, j) * (-1)**j * raw[k - j] * mean**j for j in range(k + 1))
               for k in range(1, kmax + 1)]
+    elif name == "LN":
+        # x = m Y, m = exp(a + b^2/2), E[Y^i] = exp(b^2 i (i - 1) / 2): the direct
+        # alternating sum, exact here (the library computes it another way)
+        mean = sp.exp(a + b**2 / 2)
+        mu = [mean**k * sum(sp.binomial(k, i) * (-1)**(k - i) * sp.exp(b**2 * i * (i - 1) / 2)
+                            for i in range(k + 1)) for k in range(1, kmax + 1)]
     else:
         raise ValueError(f"no oracle for distribution {name!r}")
     return mean, mu

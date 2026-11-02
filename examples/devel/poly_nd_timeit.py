@@ -11,8 +11,9 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 import time
-from tseuqlib.rv_moments_v2 import generate_moments as gm
-from tseuqlib.rv_moments_v2 import get_pdf_params
+from tseuqlib.rv_moments import rv_central_moments
+from tseuqlib.oti_util import build_rv_joint_moments
+from tseuqlib.rv_moments import get_pdf_params
 # from MC_shap import MC_shap 
 
 
@@ -83,7 +84,9 @@ for k in range(2,3):
         
         
         # Generate the Moments vector:
-        rv_mu_joint = gm(dist,shape, scale,means, order_of_moments)
+        mom = rv_central_moments([np.array(dist), shape, scale], order_of_moments)
+        mom.compute_central_moments()
+        rv_mu_joint = build_rv_joint_moments(mom.rv_mu)
         
         
         shaps = []

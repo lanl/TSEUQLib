@@ -53,17 +53,18 @@ def _known(test_id):
     return []
 
 
-def _has_K(case):
+def _slow_oracle(case):
     # The moving-center checks verify the oracle's mode (A), not the library,
-    # and its sympy work is slow for Kumaraswamy inputs; the N, U and T cases
-    # cover mode (A). K cases keep the oracle (C) and fixed-surrogate checks.
-    return "K" in case[2]
+    # and its sympy work is slow for Kumaraswamy and lognormal inputs; the N,
+    # U and T cases cover mode (A). K and LN cases keep the oracle (C) and
+    # fixed-surrogate checks.
+    return any(name in ("K", "LN") for name in case[2])
 
 
 def _moment_params(with_marks, moving=False):
     out = []
     for c in MOMENT_CASES:
-        if moving and _has_K(c):
+        if moving and _slow_oracle(c):
             continue
         for p in MOMENT_PARAMS:
             for q in MOMENTS:
@@ -124,14 +125,15 @@ def test_package_and_alias_share_one_implementation():
 
 # ---- partial variances, Sobol' and Shapley ---------------------------------
 
-def _orders(d):
-    return [(r, j) for r in range(1, d + 1) for j in range(len(list(combinations(range(d), r))))]
+def _subsets(d):
+    # oracle order; the library is read by label (its list order differs for d >= 4)
+    return [tuple(i + 1 for i in u) for r in range(1, d + 1) for u in combinations(range(d), r)]
 
 
 def _V_lib(tq, y, d):
-    # sobol_indices returns (sobol, V, hdmr); orders above n are padded with 0
-    V = tq.sobol_indices(y)[1]
-    return [V[r][j] for r, j in _orders(d)]
+    # orders above n are padded with 0
+    V = tq.sobol_indices_by_term(y)[1]
+    return [V[u] for u in _subsets(d)]
 
 
 def _V_orc(o):
@@ -140,8 +142,8 @@ def _V_orc(o):
 
 
 def _sobol_lib(tq, y, d):
-    sob = tq.sobol_indices(y)[0]
-    return [sob[r][j] for r, j in _orders(d)]
+    S = tq.sobol_indices_by_term(y)[0]
+    return [S[u] for u in _subsets(d)]
 
 
 def _sobol_orc(o):
@@ -166,7 +168,7 @@ SOBOL_QTYS = {"V": (_V_lib, _V_orc), "sobol": (_sobol_lib, _sobol_orc),
 def _sobol_params(with_marks, moving=False):
     out = []
     for case, params in SOBOL_CASES:
-        if moving and _has_K(case):
+        if moving and _slow_oracle(case):
             continue
         for p in params:
             for q in SOBOL_QTYS:

@@ -23,6 +23,8 @@ MOMENT_CASES = [
     ("N-exp-n2", f_exp, ["N", "N"], [1.0, 2.0], [0.5, 0.3], 2),
     # Kumaraswamy shapes a, b on [0, 1]; the paper examples use K inputs
     ("K-exp-n2", f_exp, ["K", "K"], [2.0, 3.0], [2.5, 2.0], 2),
+    # lognormal: log x ~ N(a, b^2)
+    ("LN-exp-n2", f_exp, ["LN", "LN"], [0.0, 0.5], [0.3, 0.2], 2),
 ]
 MOMENT_PARAMS = [("a", 0), ("b", 0), ("b", 1)]
 
@@ -40,8 +42,12 @@ SOBOL_PARAMS_N3 = [("a", 0), ("b", 0), ("a", 1), ("b", 1), ("a", 2), ("b", 2)]
 SOBOL_CASE_K = ("KNK-three-n2", f_three, ["K", "N", "K"], [2.0, 1.0, 2.5], [2.5, 0.5, 3.0], 2)
 SOBOL_PARAMS_K = [("a", 0), ("b", 2)]
 
+# Lognormal inputs around a uniform one.
+SOBOL_CASE_LN = ("LN-U-LN-three-n2", f_three, ["LN", "U", "LN"], [0.0, 1.5, -0.5], [0.3, 2.5, 0.2], 2)
+SOBOL_PARAMS_LN = [("b", 0), ("a", 2)]
+
 SOBOL_CASES = [(SOBOL_CASE, SOBOL_PARAMS), (SOBOL_CASE_N3, SOBOL_PARAMS_N3),
-               (SOBOL_CASE_K, SOBOL_PARAMS_K)]
+               (SOBOL_CASE_K, SOBOL_PARAMS_K), (SOBOL_CASE_LN, SOBOL_PARAMS_LN)]
 
 
 def pid(param):
