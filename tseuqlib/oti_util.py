@@ -118,6 +118,23 @@ def convert_index_to_exponent_form(lst):
 
     return compressed
 
+def tse(f, x0, order):
+    '''
+    The order'th Taylor series expansion of f about the point x0, as an OTI
+    number (the TSEUQLib paper's Eq. 5): f evaluated at x_i = x0[i] + e_i,
+    one OTI basis per input (1-based), which carries every derivative of f
+    up to that order. f takes the list of inputs and may use whatever pyoti
+    supports (+, -, *, /, ** and oti.exp, oti.sin, ...). Usually x0 is the
+    mean of the inputs:
+
+        mom = rv_central_moments([names, a, b], 4*n)
+        mom.compute_central_moments()
+        y = tse(model, mom.rv_mean, n)
+    '''
+    x = [x0[i] + oti.e(i + 1, order=order) for i in range(len(x0))]
+    return f(x)
+
+
 def tse_remainder(y, n, k):
 
     '''

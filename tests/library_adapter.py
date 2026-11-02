@@ -24,8 +24,7 @@ def build(f, names, a, b, n, param=None, kmax=None, module=moti, pass_extra=True
     param is one parameter (which, i) or a list of them; parameter j gets
     the OTI basis d + 1 + j, returned in that order. pass_extra=False leaves
     extra_bases out, which the library should not need. The mean comes from
-    rv_central_moments, because rv_mean_from_ab calls np.sqrt and fails on
-    OTI numbers.
+    rv_central_moments.
     """
     d = len(names)
     a = np.array(list(a), dtype=object)

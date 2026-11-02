@@ -161,8 +161,16 @@ def _shapley_orc(o):
     return [phi * Vt for phi in o.shapley_effects()]
 
 
+def _total_lib(tq, y, d):
+    return list(tq.total_sobol_indices(y))
+
+
+def _total_orc(o):
+    return o.total_sobol_indices()
+
+
 SOBOL_QTYS = {"V": (_V_lib, _V_orc), "sobol": (_sobol_lib, _sobol_orc),
-              "shapley": (_shapley_lib, _shapley_orc)}
+              "shapley": (_shapley_lib, _shapley_orc), "total": (_total_lib, _total_orc)}
 
 
 def _sobol_params(with_marks, moving=False):

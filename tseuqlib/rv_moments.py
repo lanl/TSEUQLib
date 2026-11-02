@@ -470,12 +470,11 @@ def rv_mean_from_ab(rv_params):
     # compute moments
     rv_moments.compute_central_moments()
     
-    print(rv_moments)
-    
-    # get mean and standard deviation
+    # get mean and standard deviation (** 0.5, not np.sqrt, so OTI
+    # parameters carry their sensitivities through)
     rv_mean = rv_moments.rv_mean
     mx02 = rv_moments.rv_mu[1]
-    rv_stdev    = [np.sqrt(mx02[i]) for i in range(len(mx02))]
+    rv_stdev    = [mx02[i]**0.5 for i in range(len(mx02))]
     
     return [rv_params[0],rv_params[1],rv_params[2], rv_mean, rv_stdev]
 

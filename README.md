@@ -8,12 +8,16 @@ Construct Taylor series expansions for surrogate modelling. Compute UQ and sensi
 | `tse`                | *n*-th-order Taylor Series                                      | $T_{n}(\boldsymbol{x})$ |
 | `expectation`        | Expected Value                                                  | $E\left[T_{n}(\boldsymbol{x})\right]$ |
 | `central_moment`     | Central Moment                                                  | $\mu_{k}\left[T_{n}(\boldsymbol{x})\right]$ |
-| `sobol_indices`      | Partial Variances                                               | $V_{ij\ldots}\left[T_{n}(\boldsymbol{x})\right]$ |
-| `sobol_indices`      | Sobol’ Indices                                                  | $S_{ij\ldots}\left[T_{n}(\boldsymbol{x})\right]$ |
+| `sobol_indices`, `sobol_indices_by_term` | Partial Variances                    | $V_{ij\ldots}\left[T_{n}(\boldsymbol{x})\right]$ |
+| `sobol_indices`, `sobol_indices_by_term` | Sobol’ Indices                       | $S_{ij\ldots}\left[T_{n}(\boldsymbol{x})\right]$ |
 | `total_sobol_indices`| Total Sobol’ Indices                                            | $S_{i}^{T}\left[T_{n}(\boldsymbol{x})\right]$ |
 | `shapley_values`     | Shapley effects                                                 | $\phi_{i}\left[T_{n}(\boldsymbol{x})\right]$ |
 | `remainder`          | Error of $\xi\left[T_{n}(\boldsymbol{x})\right]$              | $\varepsilon\left[\xi\left[T_{n}(\boldsymbol{x})\right]\right]$ |
-| —                    | Sensitivities, $\frac{\partial \xi[T_n(\boldsymbol{x})]}{\partial \theta_i}$ | $S^{\xi}_{\theta_i}$ |
+| —                    | Sensitivities of any of the above to distribution parameters, $\frac{\partial \xi[T_n(\boldsymbol{x})]}{\partial \theta_i}$: give each parameter its own OTI basis, any number at once | $S^{\xi}_{\theta_i}$ |
+
+Inputs are independent, each normal (`'N'`), uniform (`'U'`), symmetric triangular (`'T'`), Kumaraswamy (`'K'`) or lognormal (`'LN'`).
+
+**Verified.** Every quantity and sensitivity is checked against exact symbolic answers, and on polynomial models against the model's own exact values: see [`examples/verification`](examples/verification/README.md).
 
 **Many inputs at low order.** `tse_moments.tse_central_moment` computes the same quantities from closed-form equations (extending those of Balcer et al., *J. Verif. Valid. Uncert. Quantif.* 8(2), 2023, doi:10.1115/1.4062459). It covers the expected value up to fifth order, the variance with partial variances and Sobol' indices up to fourth order (at fourth order, the variance only), and the third and fourth central moments up to third order. Inputs must be independent, and it evaluates many expansion points at once. It has no limit on the number of inputs, whereas pyoti caps `oti_moments` (the third and fourth central moments of a second-order expansion take at most 10 inputs), but it computes no parameter sensitivities.
 

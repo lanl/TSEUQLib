@@ -22,6 +22,15 @@ from .oti_util import pyoti_max_bases
 
 
 
+def _subtract(a, b):
+    '''a - b entry by entry through lists, tuples, dicts and arrays.'''
+    if isinstance(a, dict):
+        return {k: _subtract(a[k], b[k]) for k in a}
+    if isinstance(a, (list, tuple)):
+        return type(a)(_subtract(x, z) for x, z in zip(a, b))
+    return a - b
+
+
 class tse_uq():
 
     def __init__(self, n_dim, mu, extra_bases=[]):
@@ -419,6 +428,40 @@ class tse_uq():
         return S_by_term, V_by_term
 
 
+    def total_sobol_indices(self, y):
+        '''
+        Total Sobol' indices, one per input in input order:
+
+            S_i^T = 1 - V[ E[y | x_~i] ] / V[y]
+
+        (x_~i: every input but x_i; the TSEUQLib paper's Eq. 27 and
+        Algorithm 5). Equal to the sum of the Sobol' indices of every term
+        containing i. OTI bases above n_dim are distribution parameters:
+        each index carries its derivative with respect to each of them.
+        '''
+        Vtotal = self.central_moment(y, 2)
+        ST = np.zeros(self.n_dim, dtype=object)
+        for i in range(1, self.n_dim+1):
+            rest = [j for j in range(1, self.n_dim+1) if j != i]
+            E_rest = self.conditional_expectation(y, rest)
+            if hasattr(E_rest, 'get_active_bases'):
+                V_rest = self.central_moment(E_rest, 2)
+            else:  # nothing left to vary
+                V_rest = np.float64(0.0)
+            ST[i-1] = 1 - V_rest/Vtotal
+        return ST
+
+
+    def shapley_values(self, y, max_order = None):
+        '''
+        Shapley effects of the inputs in variance units, as an array of
+        shape (1, n_dim): phi_i = sum over the terms u containing i of
+        V_u / |u| (the TSEUQLib paper's Eq. 28). Divide by the variance for
+        the normalized effects, which sum to 1. Same as shapley_values_v2.
+        '''
+        return self.shapley_values_v2(y, max_order=max_order)
+
+
     # HDMR representation
     # @profile
     def build_hdmr(self, y, max_order=None, Ey=None):
@@ -669,6 +712,33 @@ class tse_uq():
     
     # remainder term functions
     
+    def remainder(self, quantity, y, n, l, *args, **kwargs):
+        '''
+        Remainder estimate of any quantity of the n'th-order expansion (the
+        TSEUQLib paper's Eq. 36):
+
+            quantity(T_{n+l}) - quantity(T_n)
+
+        T_m is y truncated to order m, so y must have order n+l or more.
+        quantity is a method of this object; extra arguments go to it:
+
+            tq.remainder(tq.central_moment, y, 2, 1, 3)    # of mu_3
+            tq.remainder(tq.total_sobol_indices, y, 2, 1)
+            tq.remainder(tq.shapley_values, y, 2, 1)
+
+        Lists, tuples, dicts and arrays are subtracted entry by entry.
+        expectation_remainder, central_moment_remainder and
+        sobol_indices_remainder are this for their quantities.
+        '''
+        if int(l) != l or l < 1:
+            raise ValueError('l must be a positive integer')
+        if n + l > y.order:
+            raise ValueError(f'y has order {y.order}, below n + l = {n + l}')
+        hi = quantity(y.truncate_order(n+l+1), *args, **kwargs)
+        lo = quantity(y.real if n == 0 else y.truncate_order(n+1), *args, **kwargs)
+        return _subtract(hi, lo)
+
+
     def tse_remainder(self, y, n, l):
         '''
         Compute approximation of the remainder term of the n'th-order Taylor series expansion.

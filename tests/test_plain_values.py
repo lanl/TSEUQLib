@@ -54,6 +54,46 @@ def test_shapley_v2_is_unnormalized(sobol_pair):
     assert shap == pytest.approx(expected, rel=REL)
 
 
+def test_tse_is_the_taylor_series():
+    """tseuqlib.tse(f, x0, n) carries the oracle's Taylor coefficients, and
+    is the expansion the tests build by hand."""
+    from library_adapter import _taylor_coefficients, uoti
+    _, f, names, a, b, n = SOBOL_CASE
+    tq, y_hand, _ = build(f, names, a, b, n)
+    orc = TSEOracle(lambda x: f(x, sp), names, a, b, n)
+    mean = [orc.value(m) for m in orc.means]
+    y = uoti.tse(lambda x: f(x, uoti.oti), mean, n)
+    got = _taylor_coefficients(y, len(names), n)
+    want = sp.Poly(sp.expand(orc.T), *orc.z).as_dict()
+    for alpha, c in got.items():
+        assert c == pytest.approx(float(want.get(alpha, 0)), rel=1e-12, abs=1e-12), alpha
+    assert got == pytest.approx(_taylor_coefficients(y_hand, len(names), n), rel=1e-15, abs=1e-15)
+
+
+def test_total_sobol_indices(sobol_pair):
+    """total_sobol_indices (the paper's Eq. 27, Algorithm 5) against the
+    oracle, and against the sum of the Sobol' indices of every term
+    containing the input (Eq. 26)."""
+    orc, tq, y = sobol_pair
+    ST = tq.total_sobol_indices(y)
+    S = tq.sobol_indices_by_term(y)[0]
+    for i, want in enumerate(orc.total_sobol_indices()):
+        assert real(ST[i]) == pytest.approx(orc.value(want), rel=REL)
+        assert real(ST[i]) == pytest.approx(sum(real(v) for u, v in S.items() if i + 1 in u), rel=REL)
+
+
+def test_total_sobol_index_of_a_single_input_is_one():
+    tq, y, _ = build(lambda x, m: x[0]**3 + m.exp(x[0]), ["N"], [1.0], [0.5], 3)
+    assert real(tq.total_sobol_indices(y)[0]) == pytest.approx(1.0, rel=REL)
+
+
+def test_shapley_values_is_shapley_values_v2(sobol_pair):
+    _, tq, y = sobol_pair
+    a = np.asarray(tq.shapley_values(y), dtype=float)
+    assert a.shape == (1, 3)
+    assert a == pytest.approx(np.asarray(tq.shapley_values_v2(y), dtype=float), rel=0, abs=0)
+
+
 def test_sobol_orders_padded_to_dimension(sobol_pair):
     """Orders above n have zero partial variance and are padded up to d, so
     the result keeps the shape oti_moments always returned."""
