@@ -15,24 +15,22 @@ Construct Taylor series expansions for surrogate modelling. Compute UQ and sensi
 | `remainder`          | Error of $\xi\left[T_{n}(\boldsymbol{x})\right]$              | $\varepsilon\left[\xi\left[T_{n}(\boldsymbol{x})\right]\right]$ |
 | —                    | Sensitivities, $\frac{\partial \xi[T_n(\boldsymbol{x})]}{\partial \theta_i}$ | $S^{\xi}_{\theta_i}$ |
 
+**Many inputs at low order.** `tse_moments.tse_central_moment` computes the same quantities from closed-form equations (extending those of Balcer et al., *J. Verif. Valid. Uncert. Quantif.* 8(2), 2023, doi:10.1115/1.4062459). It covers the expected value up to fifth order, the variance with partial variances and Sobol' indices up to fourth order (at fourth order, the variance only), and the third and fourth central moments up to third order. Inputs must be independent, and it evaluates many expansion points at once. It has no limit on the number of inputs, whereas pyoti caps `oti_moments` (the third and fourth central moments of a second-order expansion take at most 10 inputs), but it computes no parameter sensitivities.
 
-# Prerequisites
-Install OTILib from https://github.com/mauriaristi/otilib. This will create a new conda environment with OTILib installed.
 
-Activate the otilib conda environment, for example:
+# Installation
+TSEUQLib runs on pyoti, from OTILib (https://github.com/mauriaristi/otilib). pyoti is published on the `mauriaristi` conda channel for Linux and macOS; there is no Windows build, so on Windows use WSL. Create a conda environment with pyoti and the other dependencies, and activate it:
 ```bash
-conda activate pyoti
+conda env create -f environment.yml
+conda activate tseuqlib
 ```
+pyoti 1.2.1 requires Python 3.13. To build pyoti from source instead, follow the OTILib instructions.
 
-Add the TSEUQLib dependencies in one of two ways (TESTING IN PROGRESS). 
-1) Update the pyoti environment with:
+Run the tests with:
 ```bash
-conda env update -f environment.yml
+python -m pytest tests
 ```
-Or, 2) Update the pyoti environment with:
-```bash
-conda install line_profiler sympy scipy pandas
-```
+Add `-n auto` to spread them over all cores, as CI does.
 
 # Usage
 Run the examples in examples/ with python. For example, run the ishigami example by:
