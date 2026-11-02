@@ -26,11 +26,13 @@ jobs:
       # ci/environment-ci.yml changes (or GitHub drops the cache after 7 days
       # unused, or a new branch's first run); solving it takes minutes. It is
       # saved right after it is built, so a failing test run still keeps it.
+      # Only the env's own folder: the runner can't reset envs/'s metadata,
+      # which made tar fail on restore.
       - name: Restore the conda environment
         id: cache
         uses: actions/cache/restore@v6
         with:
-          path: ${{ env.CONDA }}/envs
+          path: ${{ env.CONDA }}/envs/tseuqlib-ci
           key: conda-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ci/environment-ci.yml') }}-${{ env.CACHE_NUMBER }}
       - name: Create the environment (cache miss only)
         if: steps.cache.outputs.cache-hit != 'true'
@@ -39,7 +41,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
-          path: ${{ env.CONDA }}/envs
+          path: ${{ env.CONDA }}/envs/tseuqlib-ci
           key: ${{ steps.cache.outputs.cache-primary-key }}
       - name: Show versions
         run: conda list | grep -E "^(python|pyoti|numpy|scipy|sympy|pytest|pytest-xdist|line_profiler) "
