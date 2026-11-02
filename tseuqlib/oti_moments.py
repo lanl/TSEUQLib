@@ -314,6 +314,12 @@ class tse_uq():
         @param max_order (Optional) Integer representing the maximum order of 
                          interaction terms for the calculations.
         
+        Returns sobol, V, HDMR: lists by interaction order (index 0 holds the
+        total). Within an order, terms are ordered colexicographically, by
+        their largest input first: for four inputs the pairs are 12, 13, 23,
+        14, 24, 34, which is NOT itertools.combinations order. term_labels
+        names them; sobol_indices_by_term returns dicts keyed by the inputs.
+        
         """
         # HDMRs:
         # Use conditional expectation to take variables out of the consideration
@@ -381,6 +387,36 @@ class tse_uq():
             V.append([np.float64(0.0)]*nterms)
             sobol.append([np.float64(0.0)]*nterms)
         return sobol, V, HDMR
+    
+    
+    def term_labels(self, order):
+        '''
+        The inputs (1-based, ascending) of each term of one interaction
+        order, in the order sobol_indices and build_hdmr list them.
+        '''
+        var_arr = list( range(1, self.n_dim+1) )[::-1]
+        return [tuple(sorted(t)) for t in list(combinations(var_arr, order))[::-1]]
+    
+    
+    def sobol_indices_by_term(self, y, max_order = None):
+        '''
+        Sobol' indices and partial variances keyed by the inputs of each term,
+        so they can be read without knowing the list order:
+        
+            S, V = tq.sobol_indices_by_term(y)
+            S[(1,)], S[(1, 4)], V[(2, 3)]
+        
+        Keys are 1-based input tuples in ascending order; values are the
+        same numbers sobol_indices returns (orders 1 and up).
+        '''
+        sobol, V, HDMR = self.sobol_indices(y, max_order=max_order)
+        S_by_term = {}
+        V_by_term = {}
+        for ordi in range(1, len(V)):
+            for term, s_i, v_i in zip(self.term_labels(ordi), sobol[ordi], V[ordi]):
+                S_by_term[term] = s_i
+                V_by_term[term] = v_i
+        return S_by_term, V_by_term
 
 
     # HDMR representation

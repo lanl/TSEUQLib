@@ -79,28 +79,6 @@ def build_rv_joint_moments(mu_ind):
     return mu
 
 
-def gen_OTI_basis_vector(nvars, order):
-    
-    '''
-    Generate list of bases in an OTI number.
-    '''
-    
-    dH = coti.get_dHelp()
-    nterms_total = coti.ndir_total(nvars,order)
-    
-    X=[0]*nterms_total
-    X[0] = oti.number(1)
-    
-    k=1
-    for ordi in range(1,order+1):
-        nterms = coti.ndir_order(nvars,ordi)
-        for idx in range(nterms):
-            deriv = dH.get_fulldir(idx,ordi)
-            X[k] = oti.e(deriv)
-            k+=1
-    return X
-
-
 def gen_OTI_indices(nvars, order):
     
     '''
@@ -158,9 +136,10 @@ def tse_remainder(y, n, k):
     # check if remainder term can be computed
     if k<0:
         raise ValueError('k must be greater than 0 in oti_util.tse_error()')
-    if k>order:
+    if n+k>order:
         raise ValueError('n+k is greater than order of Taylor series in oti_util.tse_error()')
     
-    return y.truncate_order(n+k) - y.truncate_order(n)
+    # truncate_order(m) keeps the orders below m
+    return y.truncate_order(n+k+1) - y.truncate_order(n+1)
 
 

@@ -108,3 +108,25 @@ def test_sobol_remainder(case):
             for j, u in enumerate(combinations(range(d), r)):
                 _check(S_rem[r][j], hi, lo, S_hi[u], S_lo[u], basis, f"S{u} {p or 'value'}")
                 _check(V_rem[r][j], hi, lo, V_hi[u], V_lo[u], basis, f"V{u} {p or 'value'}")
+
+
+@pytest.mark.parametrize("n,l", [(0, 1), (1, 1), (2, 1), (1, 2)], ids=lambda v: str(v))
+def test_oti_util_tse_remainder(n, l):
+    """The package-level oti_util.tse_remainder (exported as
+    tseuqlib.tse_remainder) agrees with the method; it had the same
+    off-by-one until 2026-11-01."""
+    from library_adapter import uoti
+    _, f, names, a, b = TSE_CASE
+    d = len(names)
+    tq, y, _ = build(f, names, a, b, n + l)
+    got = _taylor_coefficients(uoti.tse_remainder(y, n, l), d, n + l)
+    want = _taylor_coefficients(tq.tse_remainder(y, n, l), d, n + l)
+    assert got == pytest.approx(want, rel=1e-14, abs=1e-14)
+
+
+def test_oti_util_tse_remainder_past_order():
+    _, f, names, a, b = TSE_CASE
+    from library_adapter import uoti
+    _, y, _ = build(f, names, a, b, 2)
+    with pytest.raises(ValueError):
+        uoti.tse_remainder(y, 2, 1)

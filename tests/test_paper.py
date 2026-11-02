@@ -55,16 +55,14 @@ def _tse(a, b, n, kmax=12):
 
 
 def metrics(tq, y):
-    """Every Table 3 quantity, keyed as in the table (the library orders
-    interaction terms by OTI direction; build_hdmr's term_struct names them)."""
+    """Every Table 3 quantity, keyed as in the table."""
     out = {"E": tq.expectation(y), "V": tq.central_moment(y, 2),
            "mu3": tq.central_moment(y, 3), "mu4": tq.central_moment(y, 4)}
-    sob, V, _ = tq.sobol_indices(y)
-    _, terms, _ = tq.build_hdmr(y)
-    for r in range(1, 4):
-        for j, t in enumerate(terms[r]):
-            key = "".join(str(i) for i in sorted(t))
-            out["V" + key], out["S" + key] = V[r][j], sob[r][j]
+    S, V = tq.sobol_indices_by_term(y)
+    for u in S:
+        if len(u) < 4:  # V1234 = S1234 = 0, not in the table
+            key = "".join(str(i) for i in u)
+            out["V" + key], out["S" + key] = V[u], S[u]
     shap = tq.shapley_values_v2(y)[0]
     for i in range(4):
         out[f"phi{i + 1}"] = shap[i]

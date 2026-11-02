@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import pyoti.sparse as oti  # noqa: E402
 
-import tseuqlib.oti_moments_sens as moti_sens  # noqa: E402
+import tseuqlib.oti_moments as moti  # noqa: E402
 import tseuqlib.oti_util as uoti  # noqa: E402
 import tseuqlib.rv_moments as rv  # noqa: E402
 
@@ -59,7 +59,7 @@ def library_sensitivities(which, i):
         mom.compute_central_moments()
     x = [mom.rv_mean[j] + oti.e(j + 1, order=TSE_ORDER) for j in range(d)]
     y = model(x)
-    tq = moti_sens.tse_uq(d, uoti.build_rv_joint_moments(mom.rv_mu), extra_bases=[d + 1])
+    tq = moti.tse_uq(d, uoti.build_rv_joint_moments(mom.rv_mu), extra_bases=[d + 1])
     E = tq.expectation(y)
     V = tq.central_moment(y, 2)
     return E.get_deriv([d + 1]), V.get_deriv([d + 1])
