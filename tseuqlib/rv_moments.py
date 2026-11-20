@@ -6,6 +6,7 @@ import sympy as sy
 from scipy.special import gamma
 from scipy.special import beta
 from scipy.special import factorial2
+from scipy.special import gammaln, polygamma
 from scipy import stats
 
 import pyoti.sparse as oti
@@ -27,101 +28,34 @@ import math
 #     return factorial(n-1)
 
 
-def gamma_oti(z):
-	# from cmath import sin, sqrt, pi, exp
-
-    """
-    Lanczos approximation of the gamma function, adapted from:
-    wikipedia.org/wiki/Lanczos_approximation
-    """
-    g = 8
-    n = 12
-    p = [
-        0.9999999999999999298,
-        1975.3739023578852322,
-        -4397.3823927922428918,
-        3462.6328459862717019,
-        -1156.9851431631167820,
-        154.53815050252775060,
-        -6.2536716123689161798,
-        0.034642762454736807441,
-        -7.4776171974442977377e-7,
-        6.3041253821852264261e-8,
-        -2.7405717035683877489e-8,
-        4.0486948817567609101e-9
-    ]
-    '''
-    g = 7
-    n = 9
-    p = [
-        0.99999999999980993,
-        676.5203681218851,
-        -1259.1392167224028,
-        771.32342877765313,
-        -176.61502916214059,
-        12.507343278686905,
-        -0.13857109526572012,
-        9.9843695780195716e-6,
-        1.5056327351493116e-7
-    ]
-    '''
-    g = 4.7421875
-    n = 15
-    p = [0.99999999999999709182, 57.156235665862923517, -59.597960355475491248, 14.136097974741747174, -0.49191381609762019978, .33994649984811888699e-4, .46523628927048575665e-4, -.98374475304879564677e-4, .15808870322491248884e-3, -.21026444172410488319e-3, .21743961811521264320e-3, -.16431810653676389022e-3, .84418223983852743293e-4, -.26190838401581408670e-4, .36899182659531622704e-5]
-
-    EPSILON = 1e-07
-    def drop_imag(z):
-        if abs(z.imag) <= EPSILON:
-            z = z.real
-        return z
-    
-    def gamma(z):
-        # z = complex(z)
-        if z.real < 0.5:
-            y = np.pi / (oti.sin(np.pi * z) * gamma(1 - z))  # Reflection formula
-        else:
-            z -= 1
-            x = p[0]
-            for i in range(1, len(p)):
-                x += p[i] / (z + i)
-            t = z + g + 0.5
-            y = np.sqrt(2 * np.pi) * oti.exp((z+0.5)*oti.log(t)) * oti.exp(-t) * x
-        return y # drop_imag(y)
-    
-    return gamma(z)
-
 #def beta(a,b):
 #    return (gamma(a)*gamma(b))/gamma(a+b)
 
+def lgamma_oti(z):
+    '''
+    log Gamma that also accepts OTI numbers: the Taylor series of log Gamma
+    at the real part, with coefficients polygamma(k-1, z0)/k!, applied to the
+    rest of z. Accurate to about 1e-14 in every derivative.
+    '''
+    if not hasattr(z, 'order'):
+        return gammaln(z)
+    z0 = z.real
+    dz = z - z0
+    out = gammaln(z0) + 0*dz
+    term = 1
+    for k in range(1, z.order+1):
+        term = term*dz
+        out = out + polygamma(k-1, z0)/math.factorial(k)*term
+    return out
+
 def beta_oti(a,b):
-    # return (gamma_oti(a)*gamma_oti(b))/gamma_oti(a+b)
-    return (gamma(a)*gamma(b))/gamma(a+b)
+    '''Beta function that also accepts OTI numbers (positive arguments).'''
+    if not (hasattr(a, 'order') or hasattr(b, 'order')):
+        return beta(a, b)
+    return oti.exp(lgamma_oti(a) + lgamma_oti(b) - lgamma_oti(a+b))
 
 # def beta_int(a,b):
 #     return (gamma_int(a)*gamma_int(b))/gamma_int(a+b)
-
-def convert_raw_moments_to_central_moments(mu_r, mean):
-    '''
-    Convert raw moments to central moments
-    Inputs:
-        mu_r (list):
-            list of n'th raw moments
-        mean (float):
-            mean of PDF
-    Returns:
-        mu (float):
-            n'th central moment of the Kumaraswamy distribution
-    '''
-    
-    from scipy.special import binom
-    
-    mu = [0]*len(mu_r-1) # don't include mu_0
-    
-    for r in range(len(mu_r)-1):
-        for j in range(r+1):
-            mu[r]+=binom(j,r)*((-1)**j)*mu_r[len(mu_r)-1-j]*mean**j
-    
-    return mu
 
 def get_pdf_params(rv_pdf_name, rv_mean, rv_stdev):
     
@@ -198,6 +132,81 @@ def get_pdf_params(rv_pdf_name, rv_mean, rv_stdev):
         
     return rv_a, rv_b
 
+def _lognormal_scaled_central_moment(j, b):
+    '''
+    E[(Y - 1)^j] for Y = exp(b Z - b^2/2), Z standard normal, so that the j'th
+    central moment of a lognormal with log-mean a and log-sd b is
+    exp(j (a + b^2/2)) times this. The direct alternating sum cancels heavily
+    for small b, so its Taylor series at the real part of b is computed in
+    extended precision (mpmath) and applied to the rest of b: the value and
+    every derivative (parameter sensitivities) keep full precision.
+    '''
+    import mpmath
+    q = b.order if hasattr(b, 'order') else 0
+    b0 = b.real if q else b
+    with mpmath.workdps(30 + 3*j):
+        b0m = mpmath.mpf(float(b0))
+        coef = [mpmath.mpf(0)]*(q+1)
+        for k in range(j+1):
+            # sum_k C(j,k) (-1)^(j-k) exp(c (b0+e)^2), c = k(k-1)/2, as a series in e
+            c = mpmath.mpf(k*(k-1))/2
+            w = mpmath.binomial(j, k) * (-1)**(j-k) * mpmath.exp(c*b0m**2)
+            for p in range(q+1):
+                coef[p] += w*sum((2*c*b0m)**(p-2*r)/mpmath.factorial(p-2*r) * c**r/mpmath.factorial(r)
+                                 for r in range(p//2 + 1))
+        coef = [float(cf) for cf in coef]
+    if q == 0:
+        return coef[0]
+    db = b - b0
+    out = coef[0] + 0*db
+    term = 1
+    for p in range(1, q+1):
+        term = term*db
+        out = out + coef[p]*term
+    return out
+
+
+def _kumaraswamy_central_moment(j, a, b):
+    '''
+    j'th central moment of a Kumaraswamy variable on [0, 1] with shapes a, b.
+    The direct sum over the raw moments b B(1 + k/a, b) cancels heavily at
+    high j (1e-5 relative error by j = 20), so it is evaluated in extended
+    precision (mpmath), its Taylor series in a and b is taken at their real
+    parts, and that series is applied to the rest of a and b: the value and
+    every derivative (parameter sensitivities) keep full precision.
+    '''
+    import mpmath
+    qa = a.order if hasattr(a, 'order') else 0
+    qb = b.order if hasattr(b, 'order') else 0
+    q = max(qa, qb)
+    a0 = float(a.real) if qa else float(a)
+    b0 = float(b.real) if qb else float(b)
+    with mpmath.workdps(30 + 3*j):
+        def mu(am, bm):
+            raw = [bm*mpmath.beta(1 + k/am, bm) for k in range(j+1)]
+            return sum(mpmath.binomial(j, k)*(-raw[1])**(j-k)*raw[k] for k in range(j+1))
+        am, bm = mpmath.mpf(a0), mpmath.mpf(b0)
+        coef = {}
+        for pa in range(qa+1):
+            for pb in range(min(qb, q-pa)+1):
+                dv = mpmath.diff(mu, (am, bm), (pa, pb)) if pa+pb else mu(am, bm)
+                coef[(pa, pb)] = float(dv/(mpmath.factorial(pa)*mpmath.factorial(pb)))
+    if q == 0:
+        return coef[(0, 0)]
+    da = a - a0 if qa else 0
+    db = b - b0 if qb else 0
+    out = coef[(0, 0)] + 0*(a if qa else b)
+    for (pa, pb), cf in coef.items():
+        if pa + pb:
+            term = cf
+            for _ in range(pa):
+                term = term*da
+            for _ in range(pb):
+                term = term*db
+            out = out + term
+    return out
+
+
 class rv_central_moments():
     
     def __init__(self, rv_params, rv_moments_order):
@@ -206,13 +215,13 @@ class rv_central_moments():
             rv_params = [rv_pdf_name, rv_a, rv_b, ...]
                 rv_pdf_name (list): List of strings representing the type of probability distribution for each random variable.
                     List of distribution names for each variable.
-                    Possible values:
-                        - 'N' for normal (Gaussian) distribution.
-                        - 'U' for uniform distribution.
-                        - 'LN' for log-normal distribution.
-                        - 'B' for beta distribution.
-                        - 'T' for triangle (symmetric) distribution.
-                        - 'K' for Kumaraswamy distribution
+                    Possible values (and what rv_a, rv_b mean):
+                        - 'N' normal: a = mean, b = standard deviation.
+                        - 'U' uniform on [a, b].
+                        - 'LN' log-normal: a, b = mean and standard deviation of log x.
+                        - 'T' symmetric triangle on [a, b].
+                        - 'K' Kumaraswamy on [0, 1] with shapes a, b.
+                    Any other name raises a ValueError (beta is not supported).
                 rv_a (list): List of parameters representing the location or shape of the probability distribution.
                 rv_b (list): List of parameters representing the scale or spread of the probability distribution.
             rv_moments_order (int): Highest k'th central moment that will be computed
@@ -288,7 +297,10 @@ class rv_central_moments():
                     
                     return MGF
                 
-                mgf = mgf_uniform(rv_a[i], rv_b[i], 1, self.rv_moments_order)
+                # The MGF is unused (the moments above are in closed form), and
+                # with parameter bases at order rv_moments_order+1 it can exceed
+                # pyoti's basis limit and segfault.
+                # mgf = mgf_uniform(rv_a[i], rv_b[i], 1, self.rv_moments_order)
                 '''
                 for j in range(1,self.rv_moments_order):
                     
@@ -309,22 +321,17 @@ class rv_central_moments():
                     else:
                         rv_mu[j-1][i] = rv_b[i]**j*factorial2((j-1), exact = True)
             
-            elif pdfi == "LN": # Log-Normal
+            elif pdfi == "LN": # Log-normal: log x ~ N(a, b^2)
                 
-                lb[i]    = -np.inf
+                lb[i]    = 0
                 ub[i]    = np.inf
-                rv_mean[i] = rv_a[i]
                 
-                raw_moments = [[] for i in range(self.rv_moments_order+1)]
-                raw_moments[0] = [1 for i in range(n_dim)]
+                # x = m Y with m = exp(a + b^2/2) the mean, so mu_j = m^j E[(Y-1)^j]
+                use_oti = hasattr(rv_a[i], 'order') or hasattr(rv_b[i], 'order')
+                exp = oti.exp if use_oti else np.exp
+                rv_mean[i] = exp(rv_a[i] + 0.5*rv_b[i]**2)
                 for j in range(1,self.rv_moments_order+1):
-                    mu = shape[i]
-                    sigma_2 = scale[i]
-                    raw_moments[j].append(np.exp(j*rv_a[i] + .5*j**2*rv_b[i]))
-                    central_moment = 0
-                    for k in range(0,j+1):
-                        central_moment = central_moment + math.comb(j,k)*(-1)**k*raw_moments[j- k][0]*rv_mean[i]**k
-                    rv_mu[j-1][i] = central_moment
+                    rv_mu[j-1][i] = rv_mean[i]**j * _lognormal_scaled_central_moment(j, rv_b[i])
             
             elif pdfi == "T": # Triangular
                 
@@ -403,7 +410,6 @@ class rv_central_moments():
                         term1 = 3**-k*(2*c-rv_b[i]-rv_a[i])**k
                         term2 = ((-3**-k*(2*c-rv_b[i]-rv_a[i])**k + 3**-k*(-c+2*rv_b[i]-rv_a[i])**k)*(-c+2*rv_b[i]-rv_a[i])**2)/(9*(-c+rv_b[i])*(rv_b[i]-rv_a[i]))
                         term3 = ((-3**-k*(2*c-rv_b[i]-rv_a[i])**k + 3**-k*(-c-rv_b[i]+2*rv_a[i])**k)*(-c-rv_b[i]+2*rv_a[i])**2)/(9*(c-rv_a[i])*(rv_b[i]-rv_a[i]))
-                        print('coeff =', coeff)
                         rv_mu[k-1][i] = coeff*(term1 + term2 + term3)
                 
                 
@@ -430,18 +436,13 @@ class rv_central_moments():
                 
                 lb[i]    = 0
                 ub[i]    = 1
-                #rv_mean[i] = rv_b[i]*beta_oti(1+(1/rv_a[i]), rv_b[i])
-                rv_mean[i] = rv_b[i]*beta(1+(1/rv_a[i]), rv_b[i])
+                rv_mean[i] = rv_b[i]*beta_oti(1+(1/rv_a[i]), rv_b[i])
                 
-                raw_moments = [[] for i in range(self.rv_moments_order+1)]
-                raw_moments[0] = [1 for i in range(n_dim)]
                 for j in range(1,self.rv_moments_order+1):
-                    #raw_moments[j].append(rv_b[i]*beta_oti(1+(j/rv_a[i]), rv_b[i]))
-                    raw_moments[j].append(rv_b[i]*beta(1+(j/rv_a[i]), rv_b[i]))
-                    central_moment = 0
-                    for k in range(0,j+1):
-                        central_moment = central_moment + math.comb(j,k)*(-1)**k*raw_moments[j- k][0]*rv_mean[i]**k
-                    rv_mu[j-1][i] = central_moment
+                    rv_mu[j-1][i] = _kumaraswamy_central_moment(j, rv_a[i], rv_b[i])
+            
+            else:
+                raise ValueError(f"unknown distribution {pdfi!r}: use 'N', 'U', 'T', 'K' or 'LN'")
         
         self.lb = lb
         self.ub = ub
@@ -469,12 +470,11 @@ def rv_mean_from_ab(rv_params):
     # compute moments
     rv_moments.compute_central_moments()
     
-    print(rv_moments)
-    
-    # get mean and standard deviation
+    # get mean and standard deviation (** 0.5, not np.sqrt, so OTI
+    # parameters carry their sensitivities through)
     rv_mean = rv_moments.rv_mean
     mx02 = rv_moments.rv_mu[1]
-    rv_stdev    = [np.sqrt(mx02[i]) for i in range(len(mx02))]
+    rv_stdev    = [mx02[i]**0.5 for i in range(len(mx02))]
     
     return [rv_params[0],rv_params[1],rv_params[2], rv_mean, rv_stdev]
 

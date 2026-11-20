@@ -45,7 +45,8 @@ def funct(xx, a=None):
     return prod
 
 # Provide number of variables in the function.
-n_var = 100
+# (pass a smaller number on the command line to try it quickly)
+n_var = int(sys.argv[1]) if len(sys.argv) > 1 else 100
 
 t_var = np.zeros(n_var)
 t_sob = np.zeros(n_var)
@@ -108,7 +109,9 @@ for d in range(1, n_var+1):
     # Generate central moments of the random variables
     # User can change #4 to any.
     # Order must be >= order of TSE times the maximum order of central moments being calculated.
-    rv_moments_order = int(tse_order_max*4)
+    # The variance and the Sobol' indices need moments up to order 2n. (mu3
+    # and mu4 need 3n and 4n, where pyoti allows at most 10 inputs.)
+    rv_moments_order = int(tse_order_max*2)
 
     # Compute central moments of the random variables
     # Rv moments object
@@ -187,7 +190,8 @@ for d in range(1, n_var+1):
     t1 = time.time()
     mu2 = oti_mu.central_moment(y, 2)
     t_var[d - 1]  = time.time() - t1
-    mu3 = oti_mu.central_moment(y, 3)
+    # mu3 (unused here) needs moments up to order 3n
+    # mu3 = oti_mu.central_moment(y, 3)
 
     try:
         #Compute derivatives of total variance.
@@ -224,7 +228,7 @@ for d in range(1, n_var+1):
     # Compute Sobol indices and partial variance
 
     t1 = time.time()
-    sobol, Vy_hdmr = oti_mu.sobol_indices(y)
+    sobol, Vy_hdmr, f_hdmr = oti_mu.sobol_indices(y)
     t_sob[d - 1]  = time.time() - t1
 
     # Initializing a dictionary to store results

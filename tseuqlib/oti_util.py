@@ -4,6 +4,22 @@ import pyoti.core   as coti
 import numpy as np
 
 
+# pyoti supports a limited number of OTI bases at each truncation order; past
+# it, it prints "Cant change memory" and crashes. Each pair is the first order
+# of a band and the most bases allowed in it, as printed by
+# pyoti.core.get_dHelp().print_capabilities() (the same in pyoti 1.2.1);
+# tests/test_pyoti_limits.py checks it against the installed pyoti.
+PYOTI_MAX_BASES = [(1, 65000), (2, 1000), (3, 100), (5, 10), (11, 5), (21, 3), (51, 2)]
+PYOTI_MAX_ORDER = 150
+
+
+def pyoti_max_bases(order):
+    '''Most OTI bases pyoti supports at a truncation order.'''
+    if order > PYOTI_MAX_ORDER:
+        return 0
+    return [nb for o, nb in PYOTI_MAX_BASES if o <= order][-1]
+
+
 # @profile
 def build_rv_joint_moments(mu_ind):
     """
@@ -31,6 +47,16 @@ def build_rv_joint_moments(mu_ind):
     order = len(mu_ind) # Maximum order
     nvars = len(mu_ind[0])# number of variables
     
+    # Past pyoti's basis limit the direction helper returns invalid
+    # directions: raise instead.
+    for ordi in range(1,order+1):
+        if nvars > pyoti_max_bases(ordi):
+            raise ValueError(
+                f"pyoti supports at most {pyoti_max_bases(ordi)} OTI bases at "
+                f"truncation order {ordi}, and the joint moments of {nvars} "
+                f"inputs need {nvars}. Compute fewer moment orders (the k'th "
+                f"central moment of an order-n expansion needs order n*k).")
+    
     mu = []
     
     for ordi in range(1,order+1):
@@ -51,28 +77,6 @@ def build_rv_joint_moments(mu_ind):
     # end for 
     
     return mu
-
-
-def gen_OTI_basis_vector(nvars, order):
-    
-    '''
-    Generate list of bases in an OTI number.
-    '''
-    
-    dH = coti.get_dHelp()
-    nterms_total = coti.ndir_total(nvars,order)
-    
-    X=[0]*nterms_total
-    X[0] = oti.number(1)
-    
-    k=1
-    for ordi in range(1,order+1):
-        nterms = coti.ndir_order(nvars,ordi)
-        for idx in range(nterms):
-            deriv = dH.get_fulldir(idx,ordi)
-            X[k] = oti.e(deriv)
-            k+=1
-    return X
 
 
 def gen_OTI_indices(nvars, order):
@@ -114,6 +118,23 @@ def convert_index_to_exponent_form(lst):
 
     return compressed
 
+def tse(f, x0, order):
+    '''
+    The order'th Taylor series expansion of f about the point x0, as an OTI
+    number (the TSEUQLib paper's Eq. 5): f evaluated at x_i = x0[i] + e_i,
+    one OTI basis per input (1-based), which carries every derivative of f
+    up to that order. f takes the list of inputs and may use whatever pyoti
+    supports (+, -, *, /, ** and oti.exp, oti.sin, ...). Usually x0 is the
+    mean of the inputs:
+
+        mom = rv_central_moments([names, a, b], 4*n)
+        mom.compute_central_moments()
+        y = tse(model, mom.rv_mean, n)
+    '''
+    x = [x0[i] + oti.e(i + 1, order=order) for i in range(len(x0))]
+    return f(x)
+
+
 def tse_remainder(y, n, k):
 
     '''
@@ -132,9 +153,10 @@ def tse_remainder(y, n, k):
     # check if remainder term can be computed
     if k<0:
         raise ValueError('k must be greater than 0 in oti_util.tse_error()')
-    if k>order:
+    if n+k>order:
         raise ValueError('n+k is greater than order of Taylor series in oti_util.tse_error()')
     
-    return y.truncate_order(n+k) - y.truncate_order(n)
+    # truncate_order(m) keeps the orders below m
+    return y.truncate_order(n+k+1) - y.truncate_order(n+1)
 
 

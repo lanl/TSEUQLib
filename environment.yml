@@ -1,10 +1,19 @@
-name: pyoti
+# Conda environment for TSEUQLib. pyoti comes from Mauricio Aristizabal's
+# anaconda.org channel (Linux and macOS; no Windows build, so use WSL on
+# Windows), everything else from conda-forge. pyoti 1.2.1 needs Python 3.13
+# and numpy 2. ci/environment-ci.yml is the same list with only Python
+# pinned, so CI also catches breakage from new releases.
+name: tseuqlib
 channels:
-  - defaults
-  - https://repo.anaconda.com/pkgs/main
+  - conda-forge
 dependencies:
-  - numpy=1.26.4
-  - pandas
+  - python=3.13
+  - mauriaristi::pyoti=1.2.1
+  - numpy>=2.1
   - scipy
   - sympy
+  - pandas
   - line_profiler
+  - matplotlib
+  - pytest
+  - pytest-xdist

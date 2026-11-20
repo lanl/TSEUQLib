@@ -1,0 +1,20 @@
+# Test environment for CI: pyoti from Mauricio Aristizabal's channel, the
+# rest from conda-forge. Versions other than Python are left to the solver,
+# so CI also catches breakage from new releases (the "Show versions" step
+# says which ran). Python is pinned because pyoti ships only for 3.13;
+# leaving it open made the solver search down from the newest Python (a
+# 7-minute solve).
+name: tseuqlib-ci
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - mauriaristi::pyoti
+  - numpy
+  - pandas
+  - scipy
+  - sympy
+  - line_profiler
+  - matplotlib
+  - pytest
+  - pytest-xdist

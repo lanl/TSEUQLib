@@ -11,10 +11,11 @@ import numpy as np
 # import scipy.stats as stats
 import matplotlib.pyplot as plt
 # from scipy.special  import gamma, factorial2, binom
-from tseuqlib.rv_moments_v2 import generate_moments as gm
+from tseuqlib.rv_moments import rv_central_moments
+from tseuqlib.oti_util import build_rv_joint_moments
 from _analytic import analytic_solution as ans
 import pandas as pd
-from tseuqlib.rv_moments_v2 import get_pdf_params
+from tseuqlib.rv_moments import get_pdf_params
 
 def func(x,alg=oti):
     y = 1
@@ -80,7 +81,9 @@ order_of_moments = order*2
 
 
 # Generate the Moments vector:
-rv_mu_joint = gm(dist,shape, scale,means, order_of_moments)
+mom = rv_central_moments([np.array(dist), shape, scale], order_of_moments)
+mom.compute_central_moments()
+rv_mu_joint = build_rv_joint_moments(mom.rv_mu)
 
 
 shaps = []
